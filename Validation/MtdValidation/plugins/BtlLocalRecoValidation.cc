@@ -267,6 +267,25 @@ private:
   MonitorElement* meUncEneRVsX_;
   MonitorElement* meUncTimeLVsX_;
   MonitorElement* meUncTimeRVsX_;
+ 
+  //Plot for TimeCalib
+  static constexpr int nRU_ = 6;
+  static constexpr int nDMSlice_ = 24;
+  static constexpr int nSMSlice_ = 48;
+  static constexpr int nCRSlice_ = 2304;
+  MonitorElement* meUncTimeR_;
+  MonitorElement* meUncTimeL_;
+  MonitorElement* meUncTimeMean_;
+  MonitorElement* meUncTimeZpos_;
+  MonitorElement* meUncTimeZneg_;
+  MonitorElement* meUncTimeZposFixRU_;
+  MonitorElement* meUncTimeZposSingleRU_[nRU_];
+  MonitorElement* meUncTimeZnegSingleRU_[nRU_];
+  MonitorElement* meUncTimePoszDMSlice_[nDMSlice_];
+  MonitorElement* meUncTimeNegzDMSlice_[nDMSlice_];
+  MonitorElement* meUncTimePoszSMSlice_[nSMSlice_];
+  MonitorElement* meUncTimeNegzSMSlice_[nSMSlice_];
+  //MonitorElement* meUncTimePoszCRSlice_[nCRSlice_];
 
   static constexpr int nBinsQ_ = 20;
   static constexpr float binWidthQ_ = 30.;
@@ -866,12 +885,14 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       if (uRecHit.amplitude().first > 0.) {
         hit_amplitude += uRecHit.amplitude().first;
         hit_time += uRecHit.time().first;
+	meUncTimeR_->Fill(uRecHit.time().first); //for TimeCalib
         nHits += 1.;
       }
       // right side:
       if (uRecHit.amplitude().second > 0.) {
         hit_amplitude += uRecHit.amplitude().second;
         hit_time += uRecHit.time().second;
+	meUncTimeL_->Fill(uRecHit.time().second); //for TimeCalib
         nHits += 1.;
       }
 
@@ -887,10 +908,143 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       hit_amplitude /= nHits;
       hit_time /= nHits;
 
+      //std::cout << "z Side: " << detId.mtdSide() <<" ---Tray ID: " << detId.mtdRR() << " --- RU ID: " << detId.runit() <<" --- DM ID: " << detId.dmodule() << " --- SM ID: " << detId.smodule() << std::endl;
+
       if (hit_amplitude < hitMinAmplitude_)
         continue;
 
+
+//--------------------------------------------------//
+//           TEST PLOT TIME CALIBRATION:            //
+//--------------------------------------------------//
+  //Hits in same RU for positive side (z>0)
+
+      //negative side
+      if (detId.mtdSide() == 0.) {
+              //std::cout << "z<0 side hit: "<< detId.mtdSide() << endl;
+              meUncTimeZneg_->Fill(hit_time);
+
+      }
+
+      //positive side
+      if (detId.mtdSide() == 1.) {
+              //std::cout << "z>0 side hit: "<< detId.mtdSide() << endl;
+              meUncTimeZpos_->Fill(hit_time);
+
+      }
+
+
+      int runit = detId.runit();
+      //Positive z Side fixed RU ring
+      if (detId.mtdSide() == 1) {
+              if (runit >= 0 && runit < nRU_) {
+                      meUncTimeZposSingleRU_[runit]->Fill(hit_time);
+              }
+      }
+
+      //Negative z Side fixed RU ring
+      if (detId.mtdSide() == 0) {
+              if (runit >= 0 && runit < nRU_) {
+                      meUncTimeZnegSingleRU_[runit]->Fill(hit_time);
+              }
+      }
+
+
+
+      //DM raw definition:
+      int DMraw = 0;
+      int SMraw = 0;
+      int CRraw = 0;
+     
+      if(detId.dmodule()==0 || detId.dmodule()==4 || detId.dmodule()==8) {
+       
+	      DMraw=0;
+	      if(detId.smodule()==0) {
+	      SMraw=0;
+	      CRraw=detId.crystal() + 16*SMraw;
+	      }
+	      else{ 
+		      SMraw=1;
+		      CRraw=detId.crystal() + 16*SMraw;
+	      }
+      }
+      if(detId.dmodule()==1 || detId.dmodule()==5 || detId.dmodule()==9) {
+      
+              DMraw=1;
+	      if(detId.smodule()==0) {
+              SMraw=2;
+	      CRraw=detId.crystal() + 16*SMraw;
+              }
+              else {
+                      SMraw=3;
+		      CRraw=detId.crystal() + 16*SMraw;
+	      }
+      }
+      if(detId.dmodule()==2 || detId.dmodule()==6 || detId.dmodule()==10) {
+      
+              DMraw=2;
+	      if(detId.smodule()==0) {
+              SMraw=4;
+	      CRraw=detId.crystal() + 16*SMraw;
+              }
+              else {
+                      SMraw=5;
+		      CRraw=detId.crystal() + 16*SMraw;
+	      }
+      }
+      if(detId.dmodule()==3 || detId.dmodule()==7 || detId.dmodule()==11) {
+      
+              DMraw=3;
+	      if(detId.smodule()==0) {
+              SMraw=6;
+	      CRraw=detId.crystal() + 16*SMraw;
+              }
+              else {
+                      SMraw=7;
+		      CRraw=detId.crystal() + 16*SMraw;
+	      }
+      } 
+
+
+      //plot for DM-slice:
+      if(detId.mtdSide() == 1) {
+	     
+	      meUncTimePoszDMSlice_[runit+DMraw+runit*3]->Fill(hit_time);
+
+      }
+      if(detId.mtdSide() == 0) {
+
+              meUncTimeNegzDMSlice_[runit+DMraw+runit*3]->Fill(hit_time);
+
+      }
+
+      //plot for SM Slice:
+      if(detId.mtdSide() == 1) {
+              meUncTimePoszSMSlice_[runit+SMraw+runit*7]->Fill(hit_time);
+      }
+
+      if(detId.mtdSide() == 0) {
+	      meUncTimeNegzSMSlice_[runit+SMraw+runit*7]->Fill(hit_time);
+      }
+
+      //plot for single crytal:
+      /*
+      if(detId.mtdSide() == 1) {
+              meUncTimePoszCRSlice_[CRraw]->Fill(hit_time);
+      }
+
+      */
+
+
+
+
+
+
+      //std::cout << "z Side ID: " << detId.mtdSide() << " -- Tray ID: " << detId.mtdRR() << " -- RU ID" << runit << " -- DM ID: " << detId.dmodule() << " -- SM ID: " << detId.smodule() << std::endl;
+
       // --- Fill the histograms
+
+      meUncTimeMean_->Fill(hit_time);
 
       meUncEneRVsX_->Fill(uRecHit.position(), uRecHit.amplitude().first - hit_amplitude);
       meUncEneLVsX_->Fill(uRecHit.position(), uRecHit.amplitude().second - hit_amplitude);
@@ -1619,6 +1773,84 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   }
 
   // --- UncalibratedRecHits histograms
+  
+  //for time calibration
+    meUncTimeR_ = ibook.book1D("BtlUncTimeR", "BTL uncalibrated hit time right; Time [ns]; ", 40, 0., 25.);
+    meUncTimeL_ = ibook.book1D("BtlUncTimeL", "BTL uncalibrated hit time left; Time [ns]; ", 40, 0., 25.);
+    meUncTimeMean_ = ibook.book1D("BtlUncTimeMean", "Mean Time of Uncalibrated RECO Hits;Time [ns];Entries", 100, 0., 25.);
+    meUncTimeZpos_ = ibook.book1D("BtlUncTimeZpos", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 100, 0., 25.);
+    meUncTimeZneg_ = ibook.book1D("BtlUncTimeZneg", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 100, 0., 25.);
+    meUncTimeZposFixRU_ = ibook.book1D("BtlUncTimeZposFixRU", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 100, 0., 25.);
+
+    for(unsigned int ihisto_nRU = 0; ihisto_nRU < nRU_; ++ihisto_nRU) {
+
+            std::string name = "BtlUncTimeZposRU_" + std::to_string(ihisto_nRU + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits for z>0 (RU " + std::to_string(ihisto_nRU + 1) + ");Time [ns];Entries";
+
+            meUncTimeZposSingleRU_[ihisto_nRU] = ibook.book1D(name, title, 200, 0., 25.);
+
+    }
+
+    for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+
+            std::string name = "BtlUncTimeZnegRU_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits for z<0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
+
+            meUncTimeZnegSingleRU_[ihistoRU] = ibook.book1D(name, title, 200, 0., 25.);
+
+    }
+
+    for(unsigned int ihisto_nDMSlice = 0; ihisto_nDMSlice < nDMSlice_; ++ihisto_nDMSlice) {
+
+            std::string name = "BtlUncTimeDMSlice_" + std::to_string(ihisto_nDMSlice + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits for z>0 (DM Slice " + std::to_string(ihisto_nDMSlice + 1) + ");Time [ns];Entries";
+
+            meUncTimePoszDMSlice_[ihisto_nDMSlice] = ibook.book1D(name, title, 200, 0., 25.);
+
+    }
+
+    for(unsigned int ihisto_nDMSlice = 0; ihisto_nDMSlice < nDMSlice_; ++ihisto_nDMSlice) {
+
+            std::string name = "BtlUncTimeNegzDMSlice_" + std::to_string(ihisto_nDMSlice + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits for z<0 (DMSlice " + std::to_string(ihisto_nDMSlice + 1) + ");Time [ns];Entries";
+
+            meUncTimeNegzDMSlice_[ihisto_nDMSlice] = ibook.book1D(name, title, 200, 0., 25.);
+
+    }
+  
+   for(unsigned int ihisto_nSMSlice = 0; ihisto_nSMSlice < nSMSlice_; ++ihisto_nSMSlice) {
+
+            std::string name = "BtlUncTimePoszSMSlice_" + std::to_string(ihisto_nSMSlice + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits for z>0 (SMSlice " + std::to_string(ihisto_nSMSlice + 1) + ");Time [ns];Entries";
+
+            meUncTimePoszSMSlice_[ihisto_nSMSlice] = ibook.book1D(name, title, 200, 0., 25.);
+
+    } 
+
+   for(unsigned int ihisto_nSMSlice = 0; ihisto_nSMSlice < nSMSlice_; ++ihisto_nSMSlice) {
+
+            std::string name = "BtlUncTimeNegzSMSlice_" + std::to_string(ihisto_nSMSlice + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits for z<0 (SMSlice " + std::to_string(ihisto_nSMSlice + 1) + ");Time [ns];Entries";
+
+            meUncTimeNegzSMSlice_[ihisto_nSMSlice] = ibook.book1D(name, title, 200, 0., 25.);
+
+    }
+
+   //Plot for single crystal:
+   /*
+   for(unsigned int ihisto_nSMSlice = 0; ihisto_nSMSlice < nSMSlice_; ++ihisto_nSMSlice) {
+
+            std::string name = "BtlUncTimePoszCRSlice_" + std::to_string(ihisto_nSMSlice + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits for z>0 (CRSlice " + std::to_string(ihisto_nSMSlice + 1) + ");Time [ns];Entries";
+
+            meUncTimePoszCRSlice_[ihisto_nSMSlice] = ibook.book1D(name, title, 200, 0., 25.);
+
+    }
+   */
+
+
+
+
 
   if (optionalPlots_) {
     meUncEneLVsX_ = ibook.bookProfile("BTLUncEneLVsX",
