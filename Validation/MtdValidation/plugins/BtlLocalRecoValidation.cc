@@ -48,6 +48,9 @@
 #include "RecoLocalFastTime/FTLClusterizer/interface/MTDClusterParameterEstimator.h"
 
 #include "MTDHit.h"
+//---------------------------------------------------------
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
+//---------------------------------------------------------
 
 class BtlLocalRecoValidation : public DQMEDAnalyzer {
 public:
@@ -77,6 +80,9 @@ private:
   edm::EDGetTokenT<FTLClusterCollection> btlRecCluToken_;
   edm::EDGetTokenT<MTDTrackingDetSetVector> mtdTrackingHitToken_;
   edm::EDGetTokenT<MtdRecoClusterToSimLayerClusterAssociationMap> r2sAssociationMapToken_;
+//------------
+  edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
+//-----------
 
   const edm::ESGetToken<MTDGeometry, MTDDigiGeometryRecord> mtdgeoToken_;
   const edm::ESGetToken<MTDTopology, MTDTopologyRcd> mtdtopoToken_;
@@ -269,23 +275,55 @@ private:
   MonitorElement* meUncTimeRVsX_;
  
   //Plot for TimeCalib
+  static constexpr int nTray_ = 36;
   static constexpr int nRU_ = 6;
+  static constexpr int nDMraw_ = 4;
   static constexpr int nDMSlice_ = 24;
   static constexpr int nSMSlice_ = 48;
   static constexpr int nCRSlice_ = 2304;
+  static constexpr double calib_EneRecoHit_ = 0.03125;
+
   MonitorElement* meUncTimeR_;
   MonitorElement* meUncTimeL_;
   MonitorElement* meUncTimeMean_;
   MonitorElement* meUncTimeZpos_;
   MonitorElement* meUncTimeZneg_;
   MonitorElement* meUncTimeZposFixRU_;
-  MonitorElement* meUncTimeZposSingleRU_[nRU_];
-  MonitorElement* meUncTimeZnegSingleRU_[nRU_];
-  MonitorElement* meUncTimePoszDMSlice_[nDMSlice_];
-  MonitorElement* meUncTimeNegzDMSlice_[nDMSlice_];
-  MonitorElement* meUncTimePoszSMSlice_[nSMSlice_];
-  MonitorElement* meUncTimeNegzSMSlice_[nSMSlice_];
+  MonitorElement* meUncTimeDMSlice_[nDMSlice_];
+  MonitorElement* meUncTimeSMSlice_[nSMSlice_];
   //MonitorElement* meUncTimePoszCRSlice_[nCRSlice_];
+  MonitorElement* meUncTimeTR_RU_[nRU_];
+  MonitorElement* meUncTimeTR_RU_DM_[nDMSlice_];
+  MonitorElement* meUncEne_;
+  MonitorElement* meUncEneVsTime_;
+  MonitorElement* meUncEneVsTimeTR_RU_[nRU_];
+  MonitorElement* meUncThetaVsTimeTR_RU_;
+  MonitorElement* meUncTimeCorr_;
+  MonitorElement* meUncTime_SMraw_in_RU_[nRU_];
+  MonitorElement* meUncTimeRUSlice_[nRU_];
+  MonitorElement* meUncTimeRUSlice_corr_[nRU_];
+  MonitorElement* meUncTime_CRraw_in_SM_[nDMSlice_];
+
+  MonitorElement* meUncTimeCR_slice_inner_;
+  MonitorElement* meUncTimeCR_slice_inner_corr_0_;
+  MonitorElement* meUncTimeCR_slice_inner_corr_bs_;
+  MonitorElement* meUncTimeCR_slice_middle_;
+  MonitorElement* meUncTimeCR_slice_middle_corr_0_;
+  MonitorElement* meUncTimeCR_slice_middle_corr_bs_;
+  MonitorElement* meUncTimeCR_slice_outer_;
+  MonitorElement* meUncTimeCR_slice_outer_corr_0_;
+  MonitorElement* meUncTimeCR_slice_outer_corr_bs_;
+  
+  MonitorElement* meUncbeamspot_x_;
+  MonitorElement* meUncbeamspot_y_;
+  MonitorElement* meUncbeamspot_z_;
+  MonitorElement* meUnc_x_;
+  MonitorElement* meUnc_y_;
+  MonitorElement* meUnc_z_;
+  MonitorElement* meUnc_Dist_;
+  MonitorElement* meUnc_TOF_;
+  MonitorElement* meUnc_Radius_;
+
 
   static constexpr int nBinsQ_ = 20;
   static constexpr float binWidthQ_ = 30.;
@@ -327,7 +365,10 @@ BtlLocalRecoValidation::BtlLocalRecoValidation(const edm::ParameterSet& iConfig)
   mtdTrackingHitToken_ = consumes<MTDTrackingDetSetVector>(iConfig.getParameter<edm::InputTag>("trkHitTag"));
   r2sAssociationMapToken_ = consumes<MtdRecoClusterToSimLayerClusterAssociationMap>(
       iConfig.getParameter<edm::InputTag>("r2sAssociationMapTag"));
-}
+  //-------
+  beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
+  //--------
+      }
 
 BtlLocalRecoValidation::~BtlLocalRecoValidation() {}
 
@@ -344,6 +385,19 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
   const MTDTopology* topology = topologyHandle.product();
 
   auto const& cpe = iSetup.getData(cpeToken_);
+
+  // Recupera il BeamSpot--------------------------------------------------------
+  edm::Handle<reco::BeamSpot> beamSpotHandle;
+  iEvent.getByToken(beamSpotToken_, beamSpotHandle);
+
+  if (!beamSpotHandle.isValid()) {
+    throw cms::Exception("BtlLocalRecoValidation") << "BeamSpot is not available in the event!";
+  }
+  const reco::BeamSpot& beamSpot = *beamSpotHandle;
+
+  //--------------------------------------------------------
+
+
 
   auto btlRecHitsHandle = makeValid(iEvent.getHandle(btlRecHitsToken_));
   auto btlSimHitsHandle = makeValid(iEvent.getHandle(btlSimHitsToken_));
@@ -896,8 +950,6 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
         nHits += 1.;
       }
 
-      hit_amplitude /= nHits;
-      hit_time /= nHits;
 
       LogDebug("BtlLocalRecoValidation") << "#unc " << nHits << " A/T " << hit_amplitude << " " << hit_time;
       if (nHits == 0.) {
@@ -908,10 +960,10 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       hit_amplitude /= nHits;
       hit_time /= nHits;
 
-      //std::cout << "z Side: " << detId.mtdSide() <<" ---Tray ID: " << detId.mtdRR() << " --- RU ID: " << detId.runit() <<" --- DM ID: " << detId.dmodule() << " --- SM ID: " << detId.smodule() << std::endl;
 
       if (hit_amplitude < hitMinAmplitude_)
         continue;
+
 
 
 //--------------------------------------------------//
@@ -933,22 +985,7 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
 
       }
 
-
-      int runit = detId.runit();
-      //Positive z Side fixed RU ring
-      if (detId.mtdSide() == 1) {
-              if (runit >= 0 && runit < nRU_) {
-                      meUncTimeZposSingleRU_[runit]->Fill(hit_time);
-              }
-      }
-
-      //Negative z Side fixed RU ring
-      if (detId.mtdSide() == 0) {
-              if (runit >= 0 && runit < nRU_) {
-                      meUncTimeZnegSingleRU_[runit]->Fill(hit_time);
-              }
-      }
-
+      
 
 
       //DM raw definition:
@@ -1006,45 +1043,153 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       } 
 
 
-      //plot for DM-slice:
-      if(detId.mtdSide() == 1) {
-	     
-	      meUncTimePoszDMSlice_[runit+DMraw+runit*3]->Fill(hit_time);
+      //plot time distribution for DM-slice:	     	      
+      meUncTimeDMSlice_[detId.runit()+DMraw+detId.runit()*3]->Fill(hit_time);
 
-      }
-      if(detId.mtdSide() == 0) {
-
-              meUncTimeNegzDMSlice_[runit+DMraw+runit*3]->Fill(hit_time);
-
-      }
 
       //plot for SM Slice:
-      if(detId.mtdSide() == 1) {
-              meUncTimePoszSMSlice_[runit+SMraw+runit*7]->Fill(hit_time);
-      }
-
-      if(detId.mtdSide() == 0) {
-	      meUncTimeNegzSMSlice_[runit+SMraw+runit*7]->Fill(hit_time);
-      }
+      meUncTimeSMSlice_[detId.runit()+SMraw+detId.runit()*7]->Fill(hit_time);
 
       //plot for single crytal:
       /*
       if(detId.mtdSide() == 1) {
               meUncTimePoszCRSlice_[CRraw]->Fill(hit_time);
       }
-
       */
 
 
 
+      //Plot average Time in SM slice vs SM raw (inside the single RU):	
+      meUncTime_SMraw_in_RU_[detId.runit()]->Fill(SMraw,hit_time);
+	      
+      
+
+      //Plot average Time in CR slice vs CR raw (in side a single SM):							     
+      meUncTime_CRraw_in_SM_[detId.runit()+DMraw+detId.runit()*3]->Fill(CRraw,hit_time);
+							      
+
+
+      //plot to check the relationship between time and phi angle:
+
+int plot_id = 0;
+int plot_id2 = 0;
+for(int t =0; t<nTray_ ; ++t) {
+              if(t==detId.mtdRR()) {
+                      for(int r = 0; r<nRU_ ; ++r) {
+                              if(r==detId.runit()) {
+				      plot_id=r;
+				      meUncTimeTR_RU_[plot_id]->Fill(t,hit_time);
+                                      for(int d=0; d<nDMraw_;++d) {
+                                              if(d==DMraw) {
+						      plot_id2 = r + d +3*r;
+						      meUncTimeTR_RU_DM_[plot_id2]->Fill(t,hit_time);
+					      }
+				      }
+			      }
+		      }
+	      }
+}
+      
+ 
+        //plot RU ID vs mean time in RU slice
+        meUncThetaVsTimeTR_RU_->Fill(detId.runit(),hit_time);
+
+
+        //plot energy UncRecoHit
+        float hit_ene= hit_amplitude * calib_EneRecoHit_;
+        meUncEne_->Fill(hit_ene);
+
+        //plot Energy VS Time global:
+        meUncEneVsTime_->Fill(hit_ene,hit_time);
+      
+        //plot Energy VS Time per RU ring
+      int plot_id3=0;
+      for(int r = 0; r<nRU_ ; ++r) {          
+	      if(r==detId.runit()) {                
+		      plot_id3=r;               
+	    	      meUncEneVsTimeTR_RU_[plot_id3]->Fill(hit_ene,hit_time);
+			      }
+		      }
+
+//-------------------------------------------------------------------------------------------
+
+DetId geoId = detId.geographicalId(MTDTopologyMode::crysLayoutFromTopoMode(topology->getMTDTopologyMode()));
+        const MTDGeomDet* thedet = geom->idToDet(geoId);
+        if (thedet == nullptr)
+          throw cms::Exception("BtlLocalRecoValidation") << "GeographicalID: " << std::hex << geoId.rawId() << " ("
+                                                         << detId.rawId() << ") is invalid!" << std::dec << std::endl;
+        const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(thedet->topology());
+        const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());
+
+        Local3DPoint local_point(0., 0., 0.);
+        local_point = topo.pixelToModuleLocalPoint(local_point, detId.row(topo.nrows()), detId.column(topo.nrows()));
+        const auto& global_point = thedet->toGlobal(local_point);
+
+
+	constexpr float c_light = 29.97924; //in cm/ns
+	float DistUnc_0 = std::sqrt(global_point.x()*global_point.x() + global_point.y()*global_point.y() + global_point.z()*global_point.z());
+        float TOFUnc_0 = DistUnc_0/c_light;
+        float hit_time_corr_0 = hit_time - TOFUnc_0;
+
+	float dx_bs = global_point.x() - beamSpot.x0();
+        float dy_bs = global_point.y() - beamSpot.y0();
+  	float dz_bs = global_point.z() - beamSpot.z0();
+  	float distance_bs = std::sqrt(dx_bs * dx_bs + dy_bs * dy_bs + dz_bs * dz_bs);
+
+  	float TOF_bs = distance_bs / c_light;
+  	float hit_time_corr_bs = hit_time - TOF_bs;
+
+	meUnc_Dist_->Fill(DistUnc_0);
+	meUnc_TOF_->Fill(TOFUnc_0);
+	meUnc_Radius_->Fill(std::sqrt(global_point.x()*global_point.x() + global_point.y()*global_point.y()));
+	
+	meUncbeamspot_x_->Fill(beamSpot.x0());
+	meUncbeamspot_y_->Fill(beamSpot.y0());
+	meUncbeamspot_z_->Fill(beamSpot.z0());
+
+	meUnc_x_->Fill(global_point.x());
+        meUnc_y_->Fill(global_point.y());
+        meUnc_z_->Fill(global_point.z());
+
+	if(detId.runit()==0 && DMraw==1 && SMraw==2 && CRraw==32) { //seconda DM module raw, SM raw di sinistra e prima riga di cristalli
+		meUncTimeCR_slice_inner_->Fill(hit_time);
+		meUncTimeCR_slice_inner_corr_0_->Fill(hit_time_corr_0);
+		meUncTimeCR_slice_inner_corr_bs_->Fill(hit_time_corr_bs);
+	}
+
+        if(detId.runit()==2 && DMraw==1 && SMraw==2 && CRraw==32) { //seconda DM module raw, SM raw di sinistra e prima riga di cristalli
+                meUncTimeCR_slice_middle_->Fill(hit_time);
+                meUncTimeCR_slice_middle_corr_0_->Fill(hit_time_corr_0);
+		meUncTimeCR_slice_middle_corr_bs_->Fill(hit_time_corr_bs);
+        }
+
+        if(detId.runit()==5 && DMraw==1 && SMraw==2 && CRraw==32) { //seconda DM module raw, SM raw di sinistra e prima riga di cristalli
+                meUncTimeCR_slice_outer_->Fill(hit_time);
+                meUncTimeCR_slice_outer_corr_0_->Fill(hit_time_corr_0);
+		meUncTimeCR_slice_outer_corr_bs_->Fill(hit_time_corr_bs);
+        }
+
+	meUncTimeMean_->Fill(hit_time);
+        meUncTimeCorr_->Fill(hit_time_corr_0);
+        
 
 
 
-      //std::cout << "z Side ID: " << detId.mtdSide() << " -- Tray ID: " << detId.mtdRR() << " -- RU ID" << runit << " -- DM ID: " << detId.dmodule() << " -- SM ID: " << detId.smodule() << std::endl;
+	//Time distribution per fixed RU ring (z>0 and z<0)
+              if (detId.runit() >= 0 && detId.runit() < nRU_) {
+                      meUncTimeRUSlice_[detId.runit()]->Fill(hit_time);
+		      meUncTimeRUSlice_corr_[detId.runit()]->Fill(hit_time_corr_0);
+              }
+
+
+
+//---------------------------------------------------------------------------------------------
+
+
 
       // --- Fill the histograms
 
-      meUncTimeMean_->Fill(hit_time);
+      //meUncTimeMean_->Fill(hit_time);
 
       meUncEneRVsX_->Fill(uRecHit.position(), uRecHit.amplitude().first - hit_amplitude);
       meUncEneLVsX_->Fill(uRecHit.position(), uRecHit.amplitude().second - hit_amplitude);
@@ -1096,10 +1241,82 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
             qBin = ibin;
 
         meTimeResEtavsQ_[etaBin][qBin]->Fill(time_res);
+
+	//plot con TOF gamma:
+
+	float DistUnc = std::sqrt(global_point.x()*global_point.x() + global_point.y()*global_point.y() + global_point.z()*global_point.z());
+        constexpr float c_light = 29.97924;//cm/ns
+	float TOFUnc = DistUnc/c_light;
+	float hit_time_corr = hit_time - TOFUnc;
+	meUncTimeCorr_->Fill(hit_time_corr);
+
       }
     }  // uRecHit loop}
-  }
+}//optional plots
+
+//---------------------------------------------------------------------------
+for (int ru = 0; ru < nRU_; ++ru) {
+    if (!meUncTimeRUSlice_[ru]) continue; // Controlla che l'istogramma esista
+
+    TH1F* hist = meUncTimeRUSlice_[ru]->getTH1F();
+
+    // Calcolo della moda
+    int binWithMax = hist->GetMaximumBin();
+    double mode = hist->GetBinCenter(binWithMax);
+    double modeError = hist->GetBinWidth(binWithMax) / sqrt(12.0);
+
+    // Calcolo della media troncata
+    double totalEntries = hist->GetEntries();
+    double cumulativeSum = 0;
+    double cutoff = totalEntries * 0.9;
+    int binCutoff = 0;
+
+    for (int i = 1; i <= hist->GetNbinsX(); ++i) {
+        cumulativeSum += hist->GetBinContent(i);
+        if (cumulativeSum >= cutoff) {
+            binCutoff = i;
+            break;
+        }
+    }
+
+    double sum = 0, weightedSum = 0;
+    for (int i = 1; i <= binCutoff; ++i) {
+        double binCenter = hist->GetBinCenter(i);
+        double binContent = hist->GetBinContent(i);
+        weightedSum += binCenter * binContent;
+        sum += binContent;
+    }
+    double truncatedMean = weightedSum / sum;
+
+    // Errore sulla media troncata
+    double variance = 0;
+    int count = 0;
+
+    for (int i = 1; i <= binCutoff; ++i) {
+        double binCenter = hist->GetBinCenter(i);
+        double binContent = hist->GetBinContent(i);
+        count += binContent;
+        variance += binContent * pow(binCenter - truncatedMean, 2);
+    }
+
+    double truncatedStdDev = sqrt(variance / (count - 1));
+    double truncatedMeanError = truncatedStdDev / sqrt(count);
+
+    // Stampa o salva i risultati
+    std::cout << "RU " << ru << ":\n";
+    std::cout << "  Mode: " << mode << " ± " << modeError << "\n";
+    std::cout << "  Truncated Mean: " << truncatedMean << " ± " << truncatedMeanError << "\n";
 }
+
+//----------------------------------------------------------------------------------------------
+
+
+
+}//analyzer
+
+
+
+ 
 
 // ------------ method for histogram booking ------------
 void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
@@ -1777,64 +1994,72 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   //for time calibration
     meUncTimeR_ = ibook.book1D("BtlUncTimeR", "BTL uncalibrated hit time right; Time [ns]; ", 40, 0., 25.);
     meUncTimeL_ = ibook.book1D("BtlUncTimeL", "BTL uncalibrated hit time left; Time [ns]; ", 40, 0., 25.);
-    meUncTimeMean_ = ibook.book1D("BtlUncTimeMean", "Mean Time of Uncalibrated RECO Hits;Time [ns];Entries", 100, 0., 25.);
-    meUncTimeZpos_ = ibook.book1D("BtlUncTimeZpos", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 100, 0., 25.);
-    meUncTimeZneg_ = ibook.book1D("BtlUncTimeZneg", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 100, 0., 25.);
-    meUncTimeZposFixRU_ = ibook.book1D("BtlUncTimeZposFixRU", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 100, 0., 25.);
+    meUncTimeMean_ = ibook.book1D("BtlUncTimeMean", "Mean Time of Uncalibrated RECO Hits;Time [ns];Entries", 200, 0., 25.);
+    meUncTimeZpos_ = ibook.book1D("BtlUncTimeZpos", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 200, 0., 25.);
+    meUncTimeZneg_ = ibook.book1D("BtlUncTimeZneg", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 200, 0., 25.);
+    meUncTimeZposFixRU_ = ibook.book1D("BtlUncTimeZposFixRU", "Mean Time of Uncalibrated RECO Hits for z>0;Time [ns];Entries", 200, 0., 25.);
+    meUncEne_= ibook.book1D("BtlUncEne_", "Mean Energy of Uncalibrated RECO Hits;Energy [MeV];Entries", 200, 0., 20.);
+    meUncTimeCorr_ = ibook.book1D("BtlUncTimeCorr", "Mean Time of Uncalibrated RECO Hits with TOF correction;Time [ns];Entries", 200, -12.5, 12.5);
+    meUncTimeCR_slice_inner_ = ibook.book1D("BtlUncCR_slice_inner_", "BTL uncalibrated hit time inner crystal raw (RU_0,DM_1_SM_0_CR_32); Time [ns]; ", 200, 0., 25.);
+    meUncTimeCR_slice_middle_ = ibook.book1D("BtlUncCR_slice_middle_", "BTL uncalibrated hit time inner crystal raw (RU_3,DM_1_SM_0_CR_32); Time [ns]; ", 200, 0., 25.);
+    meUncTimeCR_slice_outer_ = ibook.book1D("BtlUncCR_slice_outer_", "BTL uncalibrated hit time inner crystal raw (RU_5,DM_1_SM_0_CR_32); Time [ns]; ", 200, 0., 25.);
+    meUncTimeCR_slice_inner_corr_bs_ = ibook.book1D("BtlUncCR_slice_inner_corr_bs_", "BTL uncalibrated hit time inner crystal raw bs(RU_0,DM_1_SM_0_CR_32); Time [ns]; ", 200, -12.5, 12.5);
+    meUncTimeCR_slice_middle_corr_bs_ = ibook.book1D("BtlUncCR_slice_meddle_corr_bs_", "BTL uncalibrated hit time inner crystal raw bs(RU_2,DM_1_SM_0_CR_32); Time [ns]; ", 200, -12.5, 12.5);
+    meUncTimeCR_slice_outer_corr_bs_ = ibook.book1D("BtlUncCR_slice_outer_corr_bs_", "BTL uncalibrated hit time inner crystal raw bs(RU_5,DM_1_SM_0_CR_32); Time [ns]; ", 200, -12.5, 12.5);
 
-    for(unsigned int ihisto_nRU = 0; ihisto_nRU < nRU_; ++ihisto_nRU) {
+meUncTimeCR_slice_inner_corr_0_ = ibook.book1D("BtlUncCR_slice_inner_corr_0_", "BTL uncalibrated hit time inner crystal raw 0 (RU_0,DM_1_SM_0_CR_32); Time [ns]; ", 200, -12.5, 12.5);
+    meUncTimeCR_slice_middle_corr_0_ = ibook.book1D("BtlUncCR_slice_meddle_corr_0_", "BTL uncalibrated hit time inner crystal raw 0(RU_2,DM_1_SM_0_CR_32); Time [ns]; ", 200, -12.5, 12.5);
+    meUncTimeCR_slice_outer_corr_0_ = ibook.book1D("BtlUncCR_slice_outer_corr_0_", "BTL uncalibrated hit time inner crystal raw 0(RU_5,DM_1_SM_0_CR_32); Time [ns]; ", 200, -12.5, 12.5);
 
-            std::string name = "BtlUncTimeZposRU_" + std::to_string(ihisto_nRU + 1);
-            std::string title = "Mean Time of Uncalibrated RECO Hits for z>0 (RU " + std::to_string(ihisto_nRU + 1) + ");Time [ns];Entries";
-
-            meUncTimeZposSingleRU_[ihisto_nRU] = ibook.book1D(name, title, 200, 0., 25.);
-
-    }
-
-    for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
-
-            std::string name = "BtlUncTimeZnegRU_" + std::to_string(ihistoRU + 1);
-            std::string title = "Mean Time of Uncalibrated RECO Hits for z<0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
-
-            meUncTimeZnegSingleRU_[ihistoRU] = ibook.book1D(name, title, 200, 0., 25.);
-
-    }
+   meUncbeamspot_x_ = ibook.book1D("BtlUncbeamspot_x_", "X beam spot posioton;X Beam Spot [cm];Entries", 200, -10, 10);
+   meUncbeamspot_y_ = ibook.book1D("BtlUncbeamspot_y_", "Y beam spot posioton;Y Beam Spot [cm];Entries", 200, -10, 10);
+   meUncbeamspot_z_ = ibook.book1D("BtlUncbeamspot_z_", "Z beam spot posioton;Z Beam Spot [cm];Entries", 200, -10, 10);
+   meUnc_x_ = ibook.book1D("BtlUnc_x_", "X posioton;X Beam Spot [cm];Entries", 200, -250, 250);
+   meUnc_y_ = ibook.book1D("BtlUnc_y_", "Y posioton;Y Beam Spot [cm];Entries", 200, -250, 250);
+   meUnc_z_ = ibook.book1D("BtlUnc_z_", "Z posioton;Z Beam Spot [cm];Entries", 200, -250, 250);
+   meUnc_Dist_ = ibook.book1D("BtlUnc_Dist_", "Distance from the detector center;Distance from the detector center [cm];Entries", 200, 0, 300);
+   meUnc_TOF_ = ibook.book1D("BtlUnc_TOF_", "TOF with photon approximantion;TOF [ns];Entries", 200, -10, 10);
+   meUnc_Radius_ = ibook.book1D("BtlUnc_radius_", "Radius of the hit position; #rho [cm];Entries", 100, 0, 150);
 
     for(unsigned int ihisto_nDMSlice = 0; ihisto_nDMSlice < nDMSlice_; ++ihisto_nDMSlice) {
 
             std::string name = "BtlUncTimeDMSlice_" + std::to_string(ihisto_nDMSlice + 1);
-            std::string title = "Mean Time of Uncalibrated RECO Hits for z>0 (DM Slice " + std::to_string(ihisto_nDMSlice + 1) + ");Time [ns];Entries";
+            std::string title = "Mean Time of Uncalibrated RECO Hits (DM Slice " + std::to_string(ihisto_nDMSlice + 1) + ");Time [ns];Entries";
 
-            meUncTimePoszDMSlice_[ihisto_nDMSlice] = ibook.book1D(name, title, 200, 0., 25.);
-
-    }
-
-    for(unsigned int ihisto_nDMSlice = 0; ihisto_nDMSlice < nDMSlice_; ++ihisto_nDMSlice) {
-
-            std::string name = "BtlUncTimeNegzDMSlice_" + std::to_string(ihisto_nDMSlice + 1);
-            std::string title = "Mean Time of Uncalibrated RECO Hits for z<0 (DMSlice " + std::to_string(ihisto_nDMSlice + 1) + ");Time [ns];Entries";
-
-            meUncTimeNegzDMSlice_[ihisto_nDMSlice] = ibook.book1D(name, title, 200, 0., 25.);
+            meUncTimeDMSlice_[ihisto_nDMSlice] = ibook.book1D(name, title, 200, 0., 25.);
 
     }
   
    for(unsigned int ihisto_nSMSlice = 0; ihisto_nSMSlice < nSMSlice_; ++ihisto_nSMSlice) {
 
-            std::string name = "BtlUncTimePoszSMSlice_" + std::to_string(ihisto_nSMSlice + 1);
-            std::string title = "Mean Time of Uncalibrated RECO Hits for z>0 (SMSlice " + std::to_string(ihisto_nSMSlice + 1) + ");Time [ns];Entries";
+            std::string name = "BtlUncTimeSMSlice_" + std::to_string(ihisto_nSMSlice + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits (SMSlice " + std::to_string(ihisto_nSMSlice + 1) + ");Time [ns];Entries";
 
-            meUncTimePoszSMSlice_[ihisto_nSMSlice] = ibook.book1D(name, title, 200, 0., 25.);
+            meUncTimeSMSlice_[ihisto_nSMSlice] = ibook.book1D(name, title, 200, 0., 25.);
 
     } 
 
-   for(unsigned int ihisto_nSMSlice = 0; ihisto_nSMSlice < nSMSlice_; ++ihisto_nSMSlice) {
 
-            std::string name = "BtlUncTimeNegzSMSlice_" + std::to_string(ihisto_nSMSlice + 1);
-            std::string title = "Mean Time of Uncalibrated RECO Hits for z<0 (SMSlice " + std::to_string(ihisto_nSMSlice + 1) + ");Time [ns];Entries";
 
-            meUncTimeNegzSMSlice_[ihisto_nSMSlice] = ibook.book1D(name, title, 200, 0., 25.);
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+
+            std::string name = "BtlUncTimeRUSlice_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
+            meUncTimeRUSlice_[ihistoRU] = ibook.book1D(name, title, 500, -3., 23.);
 
     }
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+
+            std::string name = "BtlUncTimeRUSlice_corr_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
+            meUncTimeRUSlice_corr_[ihistoRU] = ibook.book1D(name, title, 500, -3., 23.);
+
+    }
+   
+	 
+
+
 
    //Plot for single crystal:
    /*
@@ -1849,6 +2074,91 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
    */
 
 
+   for (int i = 0; i < nDMSlice_; ++i) {
+    meUncTimeTR_RU_DM_[i] = ibook.bookProfile(
+        "BTLUncTimeTR_RU_DM_" + std::to_string(i),
+        "BTL uncalibrated hit time - average in DM slice vs Tray ID; Tray ID; Mean Time [ns]",
+        36,   // Number of bins along Tray ID
+        -0.5, // Minimum Tray ID
+        35.5, // Maximum Tray ID
+        0.,   // Minimum mean time
+        25.,  // Maximum mean time
+        "S"   // Use standard deviation for error calculation
+    );
+}
+
+for (int i = 0; i < nRU_; ++i) {
+    meUncTimeTR_RU_[i] = ibook.bookProfile(
+        "BTLUncTimeTR_RU_" + std::to_string(i),
+        "BTL uncalibrated hit time - average in RU vs Tray ID; Tray ID; Mean Time [ns]",
+        6,   // Number of bins along Tray ID
+        -0.5, // Minimum Tray ID
+        5.5, // Maximum Tray ID
+        0.,   // Minimum mean time
+        25.,  // Maximum mean time
+        "S"   // Use standard deviation for error calculation
+    );
+}
+
+for (int i = 0; i < nRU_; ++i) {
+    meUncEneVsTimeTR_RU_[i] = ibook.bookProfile(
+        "BTLUncEneVsTimeTR_RU_" + std::to_string(i),
+        "BTL uncalibrated hit time - average in RU vs hit Energy; Energy [MeV]; Mean Time [ns]",
+        10,   
+        0.,
+        10.,
+        0.,   // Minimum mean time
+        25.,  // Maximum mean time
+        "S"   // Use standard deviation for error calculation
+    );
+}
+meUncEneVsTime_= ibook.bookProfile("BTLUncEneVsTime_",
+        "BTL uncalibrated hit time - average  vs hit Energy; Energy [MeV]; Mean Time [ns]",
+        10,
+        0.,
+        10.,
+        0.,   // Minimum mean time
+        25.,  // Maximum mean time
+        "S"   // Use standard deviation for error calculation
+    );
+
+meUncThetaVsTimeTR_RU_ = ibook.bookProfile("BTLUncThetaVsTimeTR_RU_",
+        "BTL uncalibrated hit time - average in RU vs Ru ID; RU ID; Mean Time [ns]",
+        6,   // Number of bins along Tray ID
+        -0.5, // Minimum Tray ID
+        5.5, // Maximum Tray ID
+        0.,   // Minimum mean time
+        25.,  // Maximum mean time
+        "S"   // Use standard deviation for error calculation
+    );
+
+
+for (int i = 0; i < nRU_; ++i) {
+    meUncTime_SMraw_in_RU_[i] = ibook.bookProfile(
+        "BTLUncTime_SMraw_in_RU_" + std::to_string(i),
+        "BTL uncalibrated hit time - average in SM vs SM raw ID in single RU; SM raw ID; Mean Time [ns]",
+        8,
+        -0.5,
+        7.5,
+        0.,   // Minimum mean time
+        25.,  // Maximum mean time
+        "S"   // Use standard deviation for error calculation
+    );
+}
+
+
+for(int d = 0; d< nDMSlice_;++d){
+		meUncTime_CRraw_in_SM_[d] = ibook.bookProfile(
+				"BTLUncTime_CRraw_in_SM_" + std::to_string(d),
+				"BTL uncalibrated hit time - average in CR raw vs CR raw ID in single DM slice; CR raw ID; Mean Time [ns]",
+				32,
+				-0.5,
+				31.5,
+				0.,   // Minimum mean time
+				25.,  // Maximum mean time
+				"S"   // Use standard deviation for error calculation
+				);
+}
 
 
 
@@ -1934,7 +2244,7 @@ void BtlLocalRecoValidation::fillDescriptions(edm::ConfigurationDescriptions& de
   desc.add<edm::InputTag>("r2sAssociationMapTag", edm::InputTag("mtdRecoClusterToSimLayerClusterAssociation"));
   desc.add<double>("HitMinimumEnergy", 1.);  // [MeV]
   desc.add<bool>("optionalPlots", false);
-  desc.add<bool>("UncalibRecHitsPlots", false);
+  desc.add<bool>("UncalibRecHitsPlots", false); //default false
   desc.add<double>("HitMinimumAmplitude", 30.);  // [pC]
 
   descriptions.add("btlLocalRecoValid", desc);

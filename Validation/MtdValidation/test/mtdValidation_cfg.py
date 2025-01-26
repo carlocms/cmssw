@@ -32,8 +32,9 @@ process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
 
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
-        'file:step3.root'
-    )
+    
+        'file:/gfsvol01/cms/users/giraldin/time_calib/CMSSW_15_0_X_2025-01-14-2300/work/MinBias_sample/step3.root', 'file:/gfsvol01/cms/users/giraldin/time_calib/CMSSW_15_0_X_2025-01-14-2300/work/Min_Bias_500evt/step3.root', 'file:/gfsvol01/cms/users/giraldin/time_calib/CMSSW_15_0_X_2025-01-14-2300/work/Min_Bias_1000evt/step3.root'
+        )
 )
 
 process.mix.digitizers = cms.PSet()
@@ -58,7 +59,7 @@ process.load("Validation.MtdValidation.vertices4DValid_cfi")
 
 # process.btlDigiHitsValid.optionalPlots = True
 # process.etlDigiHitsValid.optionalPlots = True
-# process.btlLocalRecoValid.optionalPlots = True
+process.btlLocalRecoValid.optionalPlots = True
 # process.etlLocalRecoValid.optionalPlots = True
 # process.mtdTracksValid.optionalPlots = True
 # process.vertices4DValid.optionalPlots = True
