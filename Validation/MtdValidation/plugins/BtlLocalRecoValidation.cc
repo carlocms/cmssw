@@ -12,6 +12,11 @@
 */
 
 #include <string>
+#include <fstream>
+#include <iostream> 
+#include <cmath>
+#include <vector>
+#include <algorithm>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/Event.h"
@@ -49,12 +54,17 @@
 
 #include "MTDHit.h"
 
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
+
+
+
 class BtlLocalRecoValidation : public DQMEDAnalyzer {
 public:
   explicit BtlLocalRecoValidation(const edm::ParameterSet&);
   ~BtlLocalRecoValidation() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
 
 private:
   void bookHistograms(DQMStore::IBooker&, edm::Run const&, edm::EventSetup const&) override;
@@ -77,7 +87,8 @@ private:
   edm::EDGetTokenT<FTLClusterCollection> btlRecCluToken_;
   edm::EDGetTokenT<MTDTrackingDetSetVector> mtdTrackingHitToken_;
   edm::EDGetTokenT<MtdRecoClusterToSimLayerClusterAssociationMap> r2sAssociationMapToken_;
-
+  edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
+  
   const edm::ESGetToken<MTDGeometry, MTDDigiGeometryRecord> mtdgeoToken_;
   const edm::ESGetToken<MTDTopology, MTDTopologyRcd> mtdtopoToken_;
   const edm::ESGetToken<MTDClusterParameterEstimator, MTDCPERecord> cpeToken_;
@@ -268,6 +279,60 @@ private:
   MonitorElement* meUncTimeLVsX_;
   MonitorElement* meUncTimeRVsX_;
 
+  //Plot for TimeCalib
+  static constexpr int nTR_ = 36;
+  static constexpr int nRU_ = 6;
+  static constexpr int nSMphi_ = 96;  
+  static constexpr double calib_EneRecoHit_ = 0.03125;
+  //int count_RU_slice_[nRU_];
+  static constexpr double hitMaxTime_=19.;
+  static constexpr double hitMaxAmplitude_=400;
+  static constexpr double hitMinimumAmplitude_=70;
+  static constexpr float c_light = 29.97924;
+  //std::vector<std::vector<double>> hit_times(nSMphi_);
+  static constexpr float ptMin = 0.7; 
+  static constexpr float ptMax = 3.0; 
+  
+  MonitorElement* meUncTimeMean_;
+  MonitorElement* meUncTimeMean_corr_;
+  MonitorElement* meUncTimeRUSlice_Zpos_[nRU_];
+  MonitorElement* meUncTimeRUSlice_Zpos_corr_[nRU_];
+  MonitorElement* meUncTimeRU_Zpos_[nRU_][nTR_];
+  MonitorElement* meUncTimeRU_Zpos_corr_[nRU_][nTR_];
+  //MonitorElement* meUncTimePhiSlice_[MTDTopology::BTLLayout::nBTLphi_];
+  //MonitorElement* meUncTimePhiSlice_corr_[MTDTopology::BTLLayout::nBTLphi_];
+  MonitorElement* meUncTimePhiSlice_[nSMphi_];
+  MonitorElement* meUncTimePhiSlice_corr_[nSMphi_];
+  MonitorElement* meUncBS_x_;
+  MonitorElement* meUncBS_y_;
+  MonitorElement* meUncBS_z_;
+  MonitorElement* meUncAmpl_global;
+  MonitorElement* meUncEne_global;
+
+  MonitorElement* meUncGlobal_Position_eta1;
+  MonitorElement* meUncGlobal_Position_eta12;
+  MonitorElement* meUncGlobal_Position_eta24;
+  MonitorElement* meUncGlobal_Position_eta36;
+  MonitorElement* meUncGlobal_Position_eta48;
+  MonitorElement* meUncGlobal_Position_z1;
+  MonitorElement* meUncGlobal_Position_z12;
+  MonitorElement* meUncGlobal_Position_z24;
+  MonitorElement* meUncGlobal_Position_z36;
+  MonitorElement* meUncGlobal_Position_z48;
+
+  MonitorElement* meUncGlobal_Position_x_phi1;
+  MonitorElement* meUncGlobal_Position_x_phi26;
+  MonitorElement* meUncGlobal_Position_x_phi27;
+  MonitorElement* meUncGlobal_Position_x_phi28;
+  MonitorElement* meUncGlobal_Position_x_phi54;
+  MonitorElement* meUncGlobal_Position_x_phi81;
+  MonitorElement* meUncGlobal_Position_y_phi1;
+  MonitorElement* meUncGlobal_Position_y_phi26;
+  MonitorElement* meUncGlobal_Position_y_phi27;
+  MonitorElement* meUncGlobal_Position_y_phi28;
+  MonitorElement* meUncGlobal_Position_y_phi54;
+  MonitorElement* meUncGlobal_Position_y_phi81;
+
   static constexpr int nBinsQ_ = 20;
   static constexpr float binWidthQ_ = 30.;
   static constexpr int nBinsQEta_ = 3;
@@ -308,7 +373,9 @@ BtlLocalRecoValidation::BtlLocalRecoValidation(const edm::ParameterSet& iConfig)
   mtdTrackingHitToken_ = consumes<MTDTrackingDetSetVector>(iConfig.getParameter<edm::InputTag>("trkHitTag"));
   r2sAssociationMapToken_ = consumes<MtdRecoClusterToSimLayerClusterAssociationMap>(
       iConfig.getParameter<edm::InputTag>("r2sAssociationMapTag"));
-}
+   beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
+
+      }
 
 BtlLocalRecoValidation::~BtlLocalRecoValidation() {}
 
@@ -320,11 +387,23 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
 
   auto geometryHandle = iSetup.getTransientHandle(mtdgeoToken_);
   const MTDGeometry* geom = geometryHandle.product();
-
   auto topologyHandle = iSetup.getTransientHandle(mtdtopoToken_);
   const MTDTopology* topology = topologyHandle.product();
 
   auto const& cpe = iSetup.getData(cpeToken_);
+
+  // Recupera il BeamSpot--------------------------------------------------------
+  edm::Handle<reco::BeamSpot> beamSpotHandle;
+  iEvent.getByToken(beamSpotToken_, beamSpotHandle);
+
+  if (!beamSpotHandle.isValid()) {
+    throw cms::Exception("BtlLocalRecoValidation") << "BeamSpot is not available in the event!";
+  }
+  const reco::BeamSpot& beamSpot = *beamSpotHandle;
+
+
+
+
 
   auto btlRecHitsHandle = makeValid(iEvent.getHandle(btlRecHitsToken_));
   auto btlSimHitsHandle = makeValid(iEvent.getHandle(btlSimHitsToken_));
@@ -346,6 +425,14 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
     }
   }
 #endif
+
+
+//---------------------
+bool in_range = false;
+
+//---------------------
+
+
 
   // --- Loop over the BTL SIM hits
   std::unordered_map<uint32_t, MTDHit> m_btlSimHits;
@@ -370,6 +457,18 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       (simHitIt->second).y = hit_pos.y();
       (simHitIt->second).z = hit_pos.z();
     }
+
+
+    //--------------------
+    // --- Calcola il pt del simHit
+    float pt = std::sqrt(std::pow(simHit.momentumAtEntry().x(), 2) + std::pow(simHit.momentumAtEntry().y(), 2));
+
+    // --- Verifica se pt è nel range e aggiorna in_range
+    if (pt > ptMin && pt < ptMax) {
+        in_range = true;  // Se trovi un pt valido, setti in_range a true
+    }
+    //-------------------
+
 
   }  // simHit loop
 
@@ -852,9 +951,21 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
                                          << uRecHit.amplitude().second << " T " << uRecHit.time().first << " "
                                          << uRecHit.time().second;
 
+
       // --- Skip UncalibratedRecHits not matched to SimHits
       if (m_btlSimHits.count(detId.rawId()) != 1)
         continue;
+
+      std::cout << "in_range" << in_range << std:: endl;
+
+    if (!in_range) 
+	    continue;
+
+      //--------------
+
+
+    
+
 
       // --- Combine the information from the left and right BTL cell sides
 
@@ -875,8 +986,6 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
         nHits += 1.;
       }
 
-      hit_amplitude /= nHits;
-      hit_time /= nHits;
 
       LogDebug("BtlLocalRecoValidation") << "#unc " << nHits << " A/T " << hit_amplitude << " " << hit_time;
       if (nHits == 0.) {
@@ -887,8 +996,90 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       hit_amplitude /= nHits;
       hit_time /= nHits;
 
-      if (hit_amplitude < hitMinAmplitude_)
+      //Amplitude selection:hit_amplitude < hitMinimumAmplitude_ || hit_amplitude > hitMaxAmplitude_
+      if (hit_amplitude > hitMaxAmplitude_)
         continue;
+      if (hit_amplitude < hitMinimumAmplitude_)
+        continue;
+
+      //Time cut for the saturation peak:
+      if (hit_time>hitMaxTime_)
+	continue;
+
+      DetId geoId = detId.geographicalId(MTDTopologyMode::crysLayoutFromTopoMode(topology->getMTDTopologyMode()));
+      const MTDGeomDet* thedet = geom->idToDet(geoId);
+      if (thedet == nullptr)
+	      throw cms::Exception("BtlLocalRecoValidation") << "GeographicalID: " << std::hex << geoId.rawId() << " ("
+                                                 << detId.rawId() << ") is invalid!" << std::dec << std::endl;
+
+      const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(thedet->topology());
+      const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());
+
+      Local3DPoint local_point(0., 0., 0.);
+      local_point = topo.pixelToModuleLocalPoint(local_point, detId.row(topo.nrows()), detId.column(topo.nrows()));
+      const auto& global_point = thedet->toGlobal(local_point);
+
+      //Beam spot coordinates:
+      float x_bs = beamSpot.x0();
+      float y_bs = beamSpot.y0();
+      float z_bs = beamSpot.z0();
+
+      //Distance beam spot<->hitted crystal:
+      float DistUnc_BS = std::sqrt(std::pow(global_point.x() - x_bs, 2) + std::pow(global_point.y() - y_bs, 2) + std::pow(global_point.z() - z_bs, 2));
+
+      //TOF in the photon-like approximation:
+      float TOFUnc_BS = DistUnc_BS / c_light;
+
+      //Hit time stamp correction:
+      float hit_time_corr = hit_time - TOFUnc_BS;
+      float hitMinTime_=TOFUnc_BS - 1;
+
+      //--------Control plots:---------
+      //meUncBS_x_->Fill(beamSpot.x0());
+      //meUncBS_y_->Fill(beamSpot.y0());
+      //meUncBS_z_->Fill(beamSpot.z0());
+      //-------------------------------
+
+      //Lower time window limit taken as the TOF of the photon minus a 3 sigma resolution (60ps):
+      //if(hit_time_corr < hitMinTime_ )
+	//      continue;
+
+      //------------Global plots-------------
+      meUncTimeMean_->Fill(hit_time);
+      meUncTimeMean_corr_->Fill(hit_time_corr);
+      meUncAmpl_global->Fill(hit_amplitude);
+      meUncEne_global->Fill(hit_amplitude*0.03125);
+
+      //----------Sensor Module Index extrapolation------------
+      auto index = topology->btlIndex(geoId.rawId());
+      uint32_t phi_index = index.first;
+      uint32_t eta_index = index.second;
+      
+      //----------Fill histograms for each SM slice------------
+      meUncTimePhiSlice_[eta_index-1]->Fill(hit_time);
+      meUncTimePhiSlice_corr_[eta_index-1]->Fill(hit_time_corr);
+//      hit_times[eta_index-1].push_back(hit_time_corr);
+/*
+	//Rimepimento per Crystal slice nella SM con indice fissato:	
+	if(eta_index==31) {
+		std::cout << " valore SM slice index: " << eta_index << " valore crystal idenx: " << detId.crystal() << std::endl;
+	}
+*/
+
+	//------------------------Histo per fixed RU slice (z>0)----------------------------
+	if(detId.mtdSide() == 1) {
+              if (detId.runit() > 0 && detId.globalRunit() <= nRU_) {
+                      meUncTimeRUSlice_Zpos_[detId.globalRunit()-1]->Fill(hit_time);
+		      meUncTimeRUSlice_Zpos_corr_[detId.globalRunit()-1]->Fill(hit_time_corr);
+	}
+
+	//------------------------Histo per singole RU inside the same slice (z>0)-----------      
+	meUncTimeRU_Zpos_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time);
+	meUncTimeRU_Zpos_corr_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time_corr);
+
+	}
+	//-----------------------------------------------------------------------------------
+
 
       // --- Fill the histograms
 
@@ -944,8 +1135,117 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
         meTimeResEtavsQ_[etaBin][qBin]->Fill(time_res);
       }
     }  // uRecHit loop}
-  }
+  }//optional plots
+
+
+//--------------------------------------------------------------------------------
+/*
+// --- Analisi statistica sui dati grezzi ---
+  std::ofstream outFile("Truncated_mean_test.txt");
+  std::ofstream stdDevFile("std_dev_test.txt");
+  std::ofstream TrMeanErrFile("Truncated_Mean_Error_test.txt");
+
+for (int slice = 0; slice < nSMphi_; ++slice) {
+    if (hit_times[slice].empty()) continue;
+    
+    auto& data = hit_times[slice];
+    std::sort(data.begin(), data.end());
+    
+    size_t cutoffIndex = static_cast<size_t>(data.size() * 0.9);
+    std::vector<double> truncatedData(data.begin(), data.begin() + cutoffIndex);
+    
+    double sum = std::accumulate(truncatedData.begin(), truncatedData.end(), 0.0);
+    double truncatedMean = sum / truncatedData.size();
+    
+    double variance = 0.0;
+    for (double val : truncatedData) {
+        variance += (val - truncatedMean) * (val - truncatedMean);
+    }
+    double truncatedStdDev = std::sqrt(variance / (truncatedData.size() - 1));
+    double truncatedMeanError = truncatedStdDev / std::sqrt(truncatedData.size());
+    
+    outFile << slice << "\t" << truncatedMean << "\t" << truncatedMeanError << "\n";
+    stdDevFile << slice << "\t" << truncatedStdDev << "\n";
+    TrMeanErrFile << slice << "\t" << truncatedMeanError << "\n";
 }
+
+outFile.close();
+stdDevFile.close();
+TrMeanErrFile.close();
+*/
+//---------------------------------------------------------------------------------
+
+
+
+//------------------Histogram analysis for SM granularity-------------------------
+std::ofstream TrMeanFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/TR_MEAN/Truncated_mean_Mutest.txt");
+std::ofstream stdDevFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/STD_ERR/std_dev_Mutest.txt");
+std::ofstream ModaFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/STD_ERR/Moda_Mutest.txt");
+std::ofstream TrMeanErrFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/STD_ERR/Truncated_Mean_Error_MUtest.txt");
+
+
+for (int slice = 0; slice < nSMphi_; ++slice) {
+    if (!meUncTimePhiSlice_corr_[slice]) continue; // Controlla che l'istogramma esista
+
+    TH1F* hist_1 = meUncTimePhiSlice_corr_[slice]->getTH1F();
+
+    // Moda
+    int binWithMax_1 = hist_1->GetMaximumBin();
+    double mode_1 = hist_1->GetBinCenter(binWithMax_1);
+    double modeError_1 = hist_1->GetBinWidth(binWithMax_1) / sqrt(12.0);
+
+    // Truncated Mean 90%
+    double totalEntries_1 = hist_1->GetEntries();
+    double cumulativeSum_1 = 0;
+    double cutoff_1 = totalEntries_1 * 0.9;
+    int binCutoff_1 = 0;
+
+    for (int i = 1; i <= hist_1->GetNbinsX(); ++i) {
+        cumulativeSum_1 += hist_1->GetBinContent(i);
+        if (cumulativeSum_1 >= cutoff_1) {
+            binCutoff_1 = i;
+            break;
+        }
+    }
+
+    double sum_1 = 0, weightedSum_1 = 0;
+    for (int i = 1; i <= binCutoff_1; ++i) {
+        double binCenter_1 = hist_1->GetBinCenter(i);
+        double binContent_1 = hist_1->GetBinContent(i);
+        weightedSum_1 += binCenter_1 * binContent_1;
+        sum_1 += binContent_1;
+    }
+    double truncatedMean_1 = weightedSum_1 / sum_1;
+
+    // Truncated Mean Error
+    double variance_1 = 0;
+    int count_1 = 0;
+
+    for (int i = 1; i <= binCutoff_1; ++i) {
+        double binCenter_1 = hist_1->GetBinCenter(i);
+        double binContent_1 = hist_1->GetBinContent(i);
+        count_1 += binContent_1;
+        variance_1 += binContent_1 * pow(binCenter_1 - truncatedMean_1, 2);
+    }
+
+    double truncatedStdDev_1 = sqrt(variance_1 / (count_1 - 1));
+    double truncatedMeanError_1 = truncatedStdDev_1 / sqrt(count_1);
+
+    TrMeanFile << slice << "\t" << truncatedMean_1 << "\t" << truncatedMeanError_1 << "\n";
+    stdDevFile << slice << "\t" << truncatedStdDev_1 << "\n";
+    ModaFile << slice << "\t" << mode_1 << "\t" << modeError_1 << "\n";
+    TrMeanErrFile << slice << "\t" << truncatedMeanError_1 << "\n";
+
+}
+TrMeanFile.close();
+stdDevFile.close();
+ModaFile.close();
+TrMeanErrFile.close();
+
+//---------------------------------------------------------------------------------------------
+}//analyzer()
+
+
 
 // ------------ method for histogram booking ------------
 void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
@@ -1619,6 +1919,95 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   }
 
   // --- UncalibratedRecHits histograms
+  
+  meUncTimeMean_ = ibook.book1D("BtlUncTimeMean", "Mean Time of Uncalibrated RECO Hits;Time [ns];Entries", 250, -5., 25.);
+  meUncTimeMean_corr_ = ibook.book1D("BtlUncTimeMean_corr", "Mean Time of Uncalibrated RECO Hits with TOF correction;Time [ns];Entries", 250, -5., 25.);
+  meUncBS_x_= ibook.book1D("BtlUncBS_x", "Beam Spot position x coordinate;BS position x [cm];Entries", 200, -2., 2.);
+  meUncBS_y_= ibook.book1D("BtlUncBS_y", "Beam Spot position y coordinate;BS position y [cm];Entries", 200, -2., 2.);
+  meUncBS_z_= ibook.book1D("BtlUncBS_z", "Beam Spot position z coordinate;BS position z [cm];Entries", 200, -2., 2.);
+  meUncAmpl_global = ibook.book1D("BtlUncAmpl_global", "Hit Amplitude;Hit Amplitude [pC];Entries", 1500, -10., 3000.);
+  meUncEne_global = ibook.book1D("BtlUncEne_global", "Hit Energy;Hit Energy [MeV];Entries", 150, -10., 30.);
+  meUncGlobal_Position_eta1 = ibook.book1D("BtlUncGlobal_eta1", "Distance of Uncalibrated RECO Hits eta index1;Distance [cm];Entries", 200, 260., 280.);
+  meUncGlobal_Position_eta12 = ibook.book1D("BtlUncGlobal_eta12", "Distance of Uncalibrated RECO Hits eta index 12;Distance [cm];Entries", 200, 210., 230.);
+  meUncGlobal_Position_eta24 = ibook.book1D("BtlUncGlobal_eta24", "Distance of Uncalibrated RECO Hits eta index 24;Distance [cm];Entries", 200, 160., 180.);
+  meUncGlobal_Position_eta36 = ibook.book1D("BtlUncGlobal_eta36", "Distance of Uncalibrated RECO Hits eta index 36;Distance [cm];Entries", 200, 120., 140.);
+  meUncGlobal_Position_eta48 = ibook.book1D("BtlUncGlobal_eta48", "Distance of Uncalibrated RECO Hits eta index 48;Distance [cm];Entries", 200, 100., 150.);
+
+  meUncGlobal_Position_z1 = ibook.book1D("BtlUncGlobal_z1", "Distance of Uncalibrated RECO Hits eta index z1;Distance [cm];Entries", 200, -250., -230.);
+  meUncGlobal_Position_z12 = ibook.book1D("BtlUncGlobal_z12", "Distance of Uncalibrated RECO Hits eta index z12;Distance [cm];Entries", 200, -200., -180.);
+  meUncGlobal_Position_z24 = ibook.book1D("BtlUncGlobal_z24", "Distance of Uncalibrated RECO Hits eta index z24;Distance [cm];Entries", 200, -140., -120.);
+  meUncGlobal_Position_z36 = ibook.book1D("BtlUncGlobal_z36", "Distance of Uncalibrated RECO Hits eta index z36;Distance [cm];Entries", 200, -70., -500.);
+  meUncGlobal_Position_z48 = ibook.book1D("BtlUncGlobal_z48", "Distance of Uncalibrated RECO Hits eta index z48;Distance [cm];Entries", 200, -10., 10.);
+
+  meUncGlobal_Position_x_phi1 = ibook.book1D("BtlUncGlobal_x_phi1", "Uncalibrated RECO Hits phi index 1 x coordinate;Distance [cm];Entries", 100, 110., 120.);
+  meUncGlobal_Position_x_phi26 = ibook.book1D("BtlUncGlobal_x_phi26", "Uncalibrated RECO Hits phi index 26 x coordinate;Distance [cm];Entries", 200, 0., 20.);
+  meUncGlobal_Position_x_phi27 = ibook.book1D("BtlUncGlobal_x_phi27", "Uncalibrated RECO Hits phi index 27 x coordinate;Distance [cm];Entries", 100, 0., 10.);
+  meUncGlobal_Position_x_phi28 = ibook.book1D("BtlUncGlobal_x_phi28", "Uncalibrated RECO Hits phi index 28 x coordinate;Distance [cm];Entries", 100, -10., 10.);
+  meUncGlobal_Position_x_phi54 = ibook.book1D("BtlUncGlobal_x_phi54", "Uncalibrated RECO Hits phi index 54 x coordinate;Distance [cm];Entries", 100, -120., -110.);
+  meUncGlobal_Position_x_phi81 = ibook.book1D("BtlUncGlobal_x_phi81", "Uncalibrated RECO Hits phi index 81 x coordinate;Distance [cm];Entries", 100, -10., 0.);
+
+  meUncGlobal_Position_y_phi1 = ibook.book1D("BtlUncGlobal_y_phi1", "Uncalibrated RECO Hits phi index 1 y coordinate;Distance [cm];Entries", 100, 10., 20.);
+  meUncGlobal_Position_y_phi26 = ibook.book1D("BtlUncGlobal_y_phi26", "Uncalibrated RECO Hits phi index 26 y coordinate;Distance [cm];Entries", 100, 110., 120.);
+  meUncGlobal_Position_y_phi27 = ibook.book1D("BtlUncGlobal_y_phi27", "Uncalibrated RECO Hits phi index 27 y coordinate;Distance [cm];Entries", 100, 110., 120.);
+  meUncGlobal_Position_y_phi28 = ibook.book1D("BtlUncGlobal_y_phi28", "Uncalibrated RECO Hits phi index 28 y coordinate;Distance [cm];Entries", 100, 110., 120.);
+  meUncGlobal_Position_y_phi54 = ibook.book1D("BtlUncGlobal_y_phi54", "Uncalibrated RECO Hits phi index 54 y coordinate;Distance [cm];Entries", 100, 10., 20.);
+  meUncGlobal_Position_y_phi81 = ibook.book1D("BtlUncGlobal_y_phi81", "Uncalibrated RECO Hits phi index 81 y coordinate;Distance [cm];Entries", 100, -120., -110.);
+
+  for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+
+            std::string name = "BtlUncTimeRUSlice_Zpos_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits z>0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
+            meUncTimeRUSlice_Zpos_[ihistoRU] = ibook.book1D(name, title, 250, -5., 25.);
+
+    }
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+
+            std::string name = "BtlUncTimeRUSlice_Zpos_corr_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits z>0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
+            meUncTimeRUSlice_Zpos_corr_[ihistoRU] = ibook.book1D(name, title, 250, -5., 25.);
+
+    }
+
+
+   for (unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+    for (unsigned int ihistoTR = 0; ihistoTR < nTR_; ++ihistoTR) {
+        // Costruzione del nome e del titolo dell'istogramma
+        std::string name = "UncTime_RU" + std::to_string(ihistoRU + 1) + "_TR" + std::to_string(ihistoTR + 1);
+        std::string title = "Uncorrected Time for RU " + std::to_string(ihistoRU + 1) + " TR " + std::to_string(ihistoTR + 1);
+
+        std::string name_corr = "UncTimeCorr_RU" + std::to_string(ihistoRU + 1) + "_TR" + std::to_string(ihistoTR + 1);
+        std::string title_corr = "Corrected Time for RU " + std::to_string(ihistoRU + 1) + " TR " + std::to_string(ihistoTR + 1);
+
+        // Definizione degli istogrammi
+        meUncTimeRU_Zpos_[ihistoRU][ihistoTR] = ibook.book1D(name, title, 250, -5., 25.);
+        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR] = ibook.book1D(name_corr, title_corr, 250, -5., 25.);
+
+	meUncTimeRU_Zpos_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); // X-axis
+        meUncTimeRU_Zpos_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2);    // Y-axis
+
+        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); // X-axis
+        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2);    // Y-axis
+    }
+}
+
+
+for (uint32_t i = 0; i < nSMphi_; ++i) {
+  meUncTimePhiSlice_[i] = ibook.book1D(
+      Form("meUncTimePhiSlice_%d", i),
+      Form("BTL Hit Time Distribution for Phi Slice %d", i),
+      500, -5., 20.);
+  meUncTimePhiSlice_[i]->setAxisTitle("Time [ns]", 1);
+  meUncTimePhiSlice_[i]->setAxisTitle("Entries/50ps", 2);  
+
+  meUncTimePhiSlice_corr_[i] = ibook.book1D(
+      Form("meUncTimePhiSlice_corr_%d", i),
+      Form("Corrected BTL Hit Time Distribution for Phi Slice %d", i),
+      625, -5., 20.);
+  meUncTimePhiSlice_corr_[i]->setAxisTitle("Time [ns]", 1); 
+  meUncTimePhiSlice_corr_[i]->setAxisTitle("Entries/50ps", 2); 
+}
+
 
   if (optionalPlots_) {
     meUncEneLVsX_ = ibook.bookProfile("BTLUncEneLVsX",

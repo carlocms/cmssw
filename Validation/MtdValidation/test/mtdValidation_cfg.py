@@ -1,5 +1,5 @@
 import FWCore.ParameterSet.Config as cms
-
+import sys
 
 from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
 process = cms.Process('mtdValidation',Phase2C17I13M9)
@@ -18,7 +18,7 @@ process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T33', ''
 process.load('RecoLocalFastTime.FTLClusterizer.MTDCPEESProducer_cfi')
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(500) )
 
 #Setup FWK for multithreaded
 process.options.numberOfThreads = 4
@@ -30,10 +30,17 @@ process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
     reportEvery = cms.untracked.int32(10),
 )
 
+
+# --- in case of condor: sys.argv[1]
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
-        'file:step3.root'
-    )
+ 
+
+        '/store/relval/CMSSW_15_0_0_pre2/RelValSinglePiFlatPt0p7To10/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/2829fce6-68b5-43c5-bfb1-8c7e295ca47a.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValSinglePiFlatPt0p7To10/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/2a1e8ad6-cab9-49cc-8cd7-fd403bec4748.root'
+        
+    
+        )
 )
 
 process.mix.digitizers = cms.PSet()
@@ -58,7 +65,7 @@ process.load("Validation.MtdValidation.vertices4DValid_cfi")
 
 # process.btlDigiHitsValid.optionalPlots = True
 # process.etlDigiHitsValid.optionalPlots = True
-# process.btlLocalRecoValid.optionalPlots = True
+process.btlLocalRecoValid.optionalPlots = True
 # process.etlLocalRecoValid.optionalPlots = True
 # process.mtdTracksValid.optionalPlots = True
 # process.vertices4DValid.optionalPlots = True
