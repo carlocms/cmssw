@@ -1,0 +1,22 @@
+executable=process_container.sh
+
+log=job_proc_$(Item).log
+output=job_proc_$(Item).log
+error=job_proc_$(Item).log
+
+notification=never
+notify_user=carlo.giraldin@cern.ch
+
+request_cpus=1
+request_memory=4096
+request_disk=10000000
+
+getenv=True
+
+should_transfer_files=Yes
+when_to_transfer_output=ON_EXIT
+
+transfer_input_files = mtdValidation_cfg.py 
+arguments            = $(Item)
+
+queue from seq 1 2 |

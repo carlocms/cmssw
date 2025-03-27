@@ -1,0 +1,37 @@
+/localdisk/home/condor/execute/dir_32054/condor_exec.exe: line 8: set -o noclobber
+cat /etc/redhat-release
+source $HOME/.bashrc
+cd ${base_dir}
+cmsenv
+
+# whatever CMSSW related command
+
+echo ${nome}
+cd ${exec_dir}
+
+cmsRun mtdValidation_cfg.py ${nome}
+
+#cmsExec.sh mtdValidation_cfg.py ${EOS_dir/}step3_${1}.root
+
+mv step3_inDQM.root ${base_dir}/step3_inDQM_${1}.root
+
+: bad substitution
+040 (1981923.000.000) 2025-03-06 22:37:54 Finished transferring output files
+...
+005 (1981923.000.000) 2025-03-06 22:37:54 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	386  -  Run Bytes Sent By Job
+	4309  -  Run Bytes Received By Job
+	386  -  Total Bytes Sent By Job
+	4309  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :                 1         1 
+	   Disk (KB)            :       20 10000000  12368477 
+	   Memory (MB)          :        0     4096      4096 
+
+	Job terminated of its own accord at 2025-03-06T21:37:54Z.
+...

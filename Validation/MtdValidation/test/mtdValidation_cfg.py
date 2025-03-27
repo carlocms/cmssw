@@ -18,7 +18,7 @@ process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T33', ''
 process.load('RecoLocalFastTime.FTLClusterizer.MTDCPEESProducer_cfi')
 process.load("Configuration.StandardSequences.Reconstruction_cff")
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(500) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 #Setup FWK for multithreaded
 process.options.numberOfThreads = 4
@@ -27,20 +27,31 @@ process.options.numberOfConcurrentLuminosityBlocks = 0
 process.options.eventSetup.numberOfConcurrentIOVs = 1
 
 process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
-    reportEvery = cms.untracked.int32(10),
+    reportEvery = cms.untracked.int32(100),
 )
 
 
+file_list = [
+        f'file:/eos/infnts/cms/store/user/cgiraldi/29703.0_SingleMuFlatPt0p7To10+Run4D110/step3_{i}.root'
+        for i in range (1, 10)
+]
+
 # --- in case of condor: sys.argv[1]
 process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring(
- 
+    #fileNames = cms.untracked.vstring(
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0496e9e7-4540-4673-911f-0c6c811fa6f2.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/065c1d5f-46b6-4063-b985-810eff026d43.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/07b4c19e-e29e-4cab-bdb2-f1557e9bd9f1.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0da94c27-0173-46f4-988b-c52f1febd6df.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0dd8ca91-80bd-4f85-8797-451d7583282b.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/16f18951-be93-4bcf-9975-9c2b70677a88.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1cdcc9fe-c6cc-4ac8-ae18-376d1d308932.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1df4f4ae-3697-40f3-a28c-0ad8382e1c17.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1fbe7afc-aa42-475c-940d-2c2bbf47551e.root',
+        #'/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1fc7f3d7-0024-4a4d-a455-37924b68b750.root'
+       #)
 
-        '/store/relval/CMSSW_15_0_0_pre2/RelValSinglePiFlatPt0p7To10/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/2829fce6-68b5-43c5-bfb1-8c7e295ca47a.root',
-        '/store/relval/CMSSW_15_0_0_pre2/RelValSinglePiFlatPt0p7To10/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/2a1e8ad6-cab9-49cc-8cd7-fd403bec4748.root'
-        
-    
-        )
+     fileNames = cms.untracked.vstring (*file_list)
 )
 
 process.mix.digitizers = cms.PSet()
