@@ -89,7 +89,7 @@ private:
   
   //funzione filtro primary hit con SimTrack:
  // bool isPrimaryTrack(unsigned int trackID, const std::vector<SimTrack>& simTracks);
- bool isPrimaryTrack(unsigned int trackID, const std::vector<SimTrack>& simTracks, const std::vector<SimVertex>& simVerticesHandle); 
+ bool isPrimaryTrack(unsigned int trackID, const std::vector<SimTrack>& simTracks, const std::vector<SimVertex>& simVerticesHandle, float& vtx_time); 
  // ------------ member data ------------
 
   const std::string folder_;
@@ -109,7 +109,7 @@ private:
   //--------  
   edm::EDGetTokenT<std::vector<reco::GenParticle>> genParticlesToken_;
   edm::EDGetTokenT<edm::SimTrackContainer> simTracksToken_;
-  edm::EDGetTokenT<std::vector<SimVertex>> simVerticesToken_;
+  edm::EDGetTokenT<edm::SimVertexContainer> simVerticesToken_;
   //-------
 
   const edm::ESGetToken<MTDGeometry, MTDDigiGeometryRecord> mtdgeoToken_;
@@ -329,39 +329,10 @@ private:
   MonitorElement* meUncTimeRUSlice_corr_ID3_[nRU_];
   MonitorElement* meUncTimeRU_Zpos_[nRU_][nTR_];
   MonitorElement* meUncTimeRU_Zpos_corr_[nRU_][nTR_];
-  //MonitorElement* meUncTimePhiSlice_[MTDTopology::BTLLayout::nBTLphi_];
-  //MonitorElement* meUncTimePhiSlice_corr_[MTDTopology::BTLLayout::nBTLphi_];
   MonitorElement* meUncTimePhiSlice_[nSMphi_];
   MonitorElement* meUncTimePhiSlice_corr_[nSMphi_];
-  MonitorElement* meUncBS_x_;
-  MonitorElement* meUncBS_y_;
-  MonitorElement* meUncBS_z_;
   MonitorElement* meUncAmpl_global;
   MonitorElement* meUncEne_global;
-
-  MonitorElement* meUncGlobal_Position_eta1;
-  MonitorElement* meUncGlobal_Position_eta12;
-  MonitorElement* meUncGlobal_Position_eta24;
-  MonitorElement* meUncGlobal_Position_eta36;
-  MonitorElement* meUncGlobal_Position_eta48;
-  MonitorElement* meUncGlobal_Position_z1;
-  MonitorElement* meUncGlobal_Position_z12;
-  MonitorElement* meUncGlobal_Position_z24;
-  MonitorElement* meUncGlobal_Position_z36;
-  MonitorElement* meUncGlobal_Position_z48;
-
-  MonitorElement* meUncGlobal_Position_x_phi1;
-  MonitorElement* meUncGlobal_Position_x_phi26;
-  MonitorElement* meUncGlobal_Position_x_phi27;
-  MonitorElement* meUncGlobal_Position_x_phi28;
-  MonitorElement* meUncGlobal_Position_x_phi54;
-  MonitorElement* meUncGlobal_Position_x_phi81;
-  MonitorElement* meUncGlobal_Position_y_phi1;
-  MonitorElement* meUncGlobal_Position_y_phi26;
-  MonitorElement* meUncGlobal_Position_y_phi27;
-  MonitorElement* meUncGlobal_Position_y_phi28;
-  MonitorElement* meUncGlobal_Position_y_phi54;
-  MonitorElement* meUncGlobal_Position_y_phi81;
 
   MonitorElement* meGenPt;
   MonitorElement* meGenEne;
@@ -382,6 +353,9 @@ private:
   MonitorElement* meSimHit_tof;
   MonitorElement* meSimHit_tof_ID0;
   MonitorElement* meSimVtx_time;
+  MonitorElement* meSimVtx_z;
+  MonitorElement* meSimTof;
+  MonitorElement* meDeltaTOF;
 
   static constexpr int nBinsQ_ = 20;
   static constexpr float binWidthQ_ = 30.;
@@ -412,43 +386,36 @@ bool BtlLocalRecoValidation::isPrimaryTrack(unsigned int trackID, const std::vec
     for (const auto& track : simTracks) {
         if (track.trackId() == trackID) {
             if (track.isPrimary()) { // Controllo se è primaria
-                //std::cout << "genPartIndex: " << track.genpartIndex()
-                 //         << " type: " << track.type() << std::endl;
+                std::cout << "genPartIndex: " << track.genpartIndex()
+                          << " type: " << track.type() << std::endl;
 
-                if (track.type() == 22) {// Controllo il type -> PDG numebering scheme
-                    
-			//estraggo le info sul simVertex
- 
-		        	
-			return true;
+                if (track.type() == 22) { // Controllo se è un fotone (PDG ID = 22)
+                    return true;
                 }
             }
         }
     }
-    return false; // Se non è primaria o non è  fixed type, ritorna false
+    return false; // Se non è primaria o non è un fotone, ritorna false
 }
 */
 
+
+
 bool BtlLocalRecoValidation::isPrimaryTrack(unsigned int trackID,
                                             const std::vector<SimTrack>& simTracks,
-                                            const std::vector<SimVertex>& simVerticesHandle) {
+                                            const std::vector<SimVertex>& simVerticesHandle,
+					    float& vtx_time) {
     for (const auto& track : simTracks) {
         if (track.trackId() == trackID) {
             if (track.isPrimary() && track.type() == 22) { // primaria e fotone
 
                 int vtxIdx = track.vertIndex();
-                    
 		const auto& simVertex = simVerticesHandle[vtxIdx];
+	    	vtx_time = simVertex.position().t();
 
-	    	float vtx_time = simVertex.position().t();
-		meSimVtx_time->Fill(vtx_time); 
-    		//std::cout << "Primary photon trackID=" << trackID
-                             // << " vertex time=" << vtx_time
-                              //<< " vertex pos=("
-                              //<< simVertex.position().x() << ","
-                              //<< simVertex.position().y() << ","
-                              //<< simVertex.position().z() << ")"
-                              //<< std::endl;
+		meSimVtx_time->Fill(vtx_time);
+	        meSimVtx_z->Fill(simVertex.position().z());
+		//meSimTrueTOF->Fill(true_TOF);
                 
 		return true; // primaria e fotone
             }
@@ -484,7 +451,7 @@ BtlLocalRecoValidation::BtlLocalRecoValidation(const edm::ParameterSet& iConfig)
    //--------
    genParticlesToken_ = consumes<std::vector<reco::GenParticle>>(edm::InputTag("genParticles", "", "HLT"));
    simTracksToken_ = consumes<edm::SimTrackContainer>(edm::InputTag("g4SimHits"));
-   simVerticesToken_ = consumes<std::vector<SimVertex>>(edm::InputTag("g4SimHits"));
+   simVerticesToken_ = consumes<edm::SimVertexContainer>(edm::InputTag("g4SimHits"));
 
    //--------
 
@@ -533,8 +500,9 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
   }
 
 
-  edm::Handle<std::vector<SimVertex>> simVerticesHandle;
-  iEvent.getByToken(simVerticesToken_, simVerticesHandle);
+  auto simVerticesHandle = makeValid(iEvent.getHandle(simVerticesToken_));
+ // edm::Handle<std::vector<SimVertex>> simVerticesHandle;
+ // iEvent.getByToken(simVerticesToken_, simVerticesHandle);
   //const auto& simVertices = *simVerticesHandle;
 
   //--------------
@@ -644,22 +612,6 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
                                        << recHit.timeError();
 
     BTLDetId detId = recHit.id();
-//--------------------------------------------------------------
-if(make_primary_filter_) {
-    uint32_t cellID = detId.rawId();
-
-    auto simHitTrackIt = cellTrackMap.find(cellID);
-    unsigned int trackID = simHitTrackIt->second;
-
-    //if (!isPrimaryTrack(trackID, *simTracks)) {
-    if (!isPrimaryTrack(trackID, *simTracks, *simVerticesHandle)){      
-  	    continue; // La traccia non è primaria, scartiamo la RecoHit
-    }
-
-    //std::cout << " è verificato?: " <<"si" << "---  UncReco ht -- evento: " << iEvent.id().event() << std::endl;;
-    //std::cout << "------------------------------------------------------------------------------------------------------" << std::endl;
-}
-//--------------------------------------------------------------------
 
     DetId geoId = detId.geographicalId(MTDTopologyMode::crysLayoutFromTopoMode(topology->getMTDTopologyMode()));
     const MTDGeomDet* thedet = geom->idToDet(geoId);
@@ -683,7 +635,27 @@ if(make_primary_filter_) {
 
 
 
-    //-----test photonLike TOF correction with reco hits------------------
+//--------------------------------------------------------------
+
+    if(make_primary_filter_) {
+    uint32_t cellID = detId.rawId();
+
+    auto simHitTrackIt = cellTrackMap.find(cellID);
+    unsigned int trackID = simHitTrackIt->second;
+
+    float vtx_time = 0;
+    //if (!isPrimaryTrack(trackID, *simTracks)) {
+    if (!isPrimaryTrack(trackID, *simTracks, *simVerticesHandle, vtx_time)) {
+            continue; // La traccia non è primaria, scartiamo la RecoHit
+    }
+
+    //Calcolo del Real TOF from Sim information:
+    float Sim_TOF = m_btlSimHits[detId.rawId()].time - vtx_time;
+    meSimTof->Fill(Sim_TOF);
+
+
+//--------------------------------------------------------------------
+//-----test photonLike TOF correction with reco hits------------------
    
     constexpr float c_speed = geant_units::operators::convertMmToCm(CLHEP::c_light);
     float photon_path_bs = std::sqrt(std::pow(global_point.x() - beamSpot.x0(), 2) + std::pow(global_point.y() - beamSpot.y0(), 2) + std::pow(global_point.z() - beamSpot.z0(), 2));
@@ -695,21 +667,19 @@ if(make_primary_filter_) {
     //Hit time stamp correction:
     float recoHit_time_corr = recHit.time() - TOF_reco_bs;
     float recoHit_time_simTOF = recHit.time() - TOF_sim;
-
-    //std::cout << "1 TIME:  -- SIM HIT time: " << m_btlSimHits[detId.rawId()].time << "  -- RECO HIT time: " << recHit.time() << std::endl;
-
-    //std::cout << "2 PATH:  -- phton_path=" << phton_path << " -- photon_path_bs= " << photon_path_bs << std::endl;
-    
-    //std::cout << "3 TOF:   -- SIM_TOF=" << true_TOF << " -- RECO_TOF=" << TOF_recoHits << " -- RECO_BS_TOF: " << TOF_reco_bs << std::endl;
-    
-    //std::cout << "4 CORR_TIME:  --SIM HIT_time_corr -->" << recoHit_time_simCorr << "  -- RECO HIT time_corr: "<< recoHit_time_corr << std::endl;
-
-    //std::cout << "5 CELL ID RECO: " << detId.rawId() <<" -- GLOBAL POSITION RECO:  -- global_RECO_x: " <<  global_point.x()  <<  "||  global_RECO_y: " <<  global_point.y()  << "  ||  global_RECO_z: " <<  global_point.z()  << std::endl;
  
     meRecoHit_TOF_corr->Fill(recoHit_time_corr);
     meRecoHit_time_corr_simTOF->Fill(recoHit_time_simTOF);
-    
-    //--------------------------------------------------------------------
+
+    float Delta_TOF = TOF_reco_bs - Sim_TOF;
+    meDeltaTOF -> Fill(Delta_TOF);
+
+
+
+
+    }
+
+//--------------------------------------------------------------------
 
     if (optionalPlots_) {
       meLocalOccupancy_->Fill(local_point.x() + recHit.position(), local_point.y());
@@ -1166,38 +1136,37 @@ if(make_primary_filter_) {
       if (m_btlSimHits.count(detId.rawId()) != 1)
         continue;
 
-//------------------primaty track filter---------------------------
+//----------------------primaty track filter---------------------------
+//---------------------------------------------------------------------
 /*
       if(make_primary_filter_) {
-    uint32_t cellID = detId.rawId();
 
-    auto simHitTrackIt = cellTrackMap.find(cellID);
-    unsigned int trackID = simHitTrackIt->second;
-
-    //if (!isPrimaryTrack(trackID, *simTracks)) {
-    if (!isPrimaryTrack(trackID, *simTracks, *simVertices)){
-            continue; // La traccia non è primaria, scartiamo la RecoHit
-    }
-
-    //std::cout << " è verificato?: " << " s" << "  --  Reco Hi -- evento: " << iEvent.id().event() << std::endl;
-    //std::cout << "------------------------------------------------------------------------------------------------------" << std::endl;
-}
+	      uint32_t cellID = detId.rawId();
+	      auto simHitTrackIt = cellTrackMap.find(cellID);
+	      unsigned int trackID = simHitTrackIt->second;
+      
+	      //if (!isPrimaryTrack(trackID, *simTracks)) {
+	      if (!isPrimaryTrack(trackID, *simTracks, *simVertices)){
+		      continue;
+      	      }
+     }
 
 */
-//-------------------------------------------------------------------------------------
-/*
+//----------------------------------------------------------------------	
+//----------------------------------------------------------------------
 
-      if (m_btlSimTrackId[detId.rawId()] != 0)
-	      continue;
-*/
+      
+      
+      
 //----------pT selection-----------------------------------------------     
-/*      if (!in_range)   
-	continue;
-*/
-//-------------------------------------------------------------------------------------
+//---------------------------------------------------------------------
+  //    if (!in_range)   
+	//      continue;
+//---------------------------------------------------------------------
 
 
-      // --- Combine the information from the left and right BTL cell sides
+      
+// --- Combine the information from the left and right BTL cell sides
 
       float nHits = 0.;
       float hit_amplitude = 0.;
@@ -1249,27 +1218,16 @@ if(make_primary_filter_) {
       local_point = topo.pixelToModuleLocalPoint(local_point, detId.row(topo.nrows()), detId.column(topo.nrows()));
       const auto& global_point = thedet->toGlobal(local_point);
 
-      //Beam spot coordinates:
-      //float x_bs = beamSpot.x0();
-      //float y_bs = beamSpot.y0();
-      //float z_bs = beamSpot.z0();
 
       //Distance beam spot<->hitted crystal:
-      //float DistUnc_BS = std::sqrt(std::pow(global_point.x() - x_bs, 2) + std::pow(global_point.y() - y_bs, 2) + std::pow(global_point.z() - z_bs, 2));
-        float DistUnc_center = std::sqrt((global_point.x()*global_point.x()) + (global_point.y()*global_point.y()) + (global_point.z()*global_point.z()));
+      float DistUnc_BS = std::sqrt(std::pow(global_point.x() - beamSpot.x0(), 2) + std::pow(global_point.y() - beamSpot.y0(), 2) + std::pow(global_point.z() - beamSpot.z0(), 2));
+       //float DistUnc_center = std::sqrt((global_point.x()*global_point.x()) + (global_point.y()*global_point.y()) + (global_point.z()*global_point.z()));
 
-	constexpr float c_cm_ns = geant_units::operators::convertMmToCm(CLHEP::c_light);  // [mm/ns] -> [cm/ns]
-      //TOF in the photon-like approximation:
-      float TOFUnc_BS = DistUnc_center / c_cm_ns;
+      constexpr float c_cm_ns = geant_units::operators::convertMmToCm(CLHEP::c_light);  // [mm/ns] -> [cm/ns]
+      float TOFUnc_BS = DistUnc_BS / c_cm_ns;
 
       //Hit time stamp correction:
       float hit_time_corr = hit_time - TOFUnc_BS;
-
-      //--------Control plots:---------
-      //meUncBS_x_->Fill(beamSpot.x0());
-      //meUncBS_y_->Fill(beamSpot.y0());
-      //meUncBS_z_->Fill(beamSpot.z0());
-      //-------------------------------
 
       
       //----------Test Track ID global---------------------
@@ -1328,8 +1286,8 @@ if(make_primary_filter_) {
 		      meUncTimeRUSlice_Zpos_corr_[detId.globalRunit()-1]->Fill(hit_time_corr);
 
 	//------------------------Histo per single RU inside the same slice (z>0)-----------      
-	meUncTimeRU_Zpos_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time);
-	meUncTimeRU_Zpos_corr_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time_corr);
+	//meUncTimeRU_Zpos_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time);
+	//meUncTimeRU_Zpos_corr_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time_corr);	
 	}
 	//-----------------------------------------------------------------------------------
 
@@ -1337,9 +1295,7 @@ if(make_primary_filter_) {
         if(detId.mtdSide() == 0) {
                       meUncTimeRUSlice_Zneg_[detId.globalRunit()-1]->Fill(hit_time);
                       meUncTimeRUSlice_Zneg_corr_[detId.globalRunit()-1]->Fill(hit_time_corr);
-
 	}
-
 
 	
 	//-----------------Histo per fixed RU slice per Track ID-test----------------------------
@@ -2298,37 +2254,8 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   
   meUncTimeMean_ = ibook.book1D("BtlUncTimeMean","BTL UNCALIBRATED RECO hits ToA;ToA_{UNC RECO} [ns]", 100, 0., 25.);
   meUncTimeMean_corr_ = ibook.book1D("BtlUncTimeMean_corr", "Mean Time of Uncalibrated RECO Hits with TOF correction;Time [ns];Entries", 1000, -3., 18.);
-  meUncBS_x_= ibook.book1D("BtlUncBS_x", "Beam Spot position x coordinate;BS position x [cm];Entries", 200, -2., 2.);
-  meUncBS_y_= ibook.book1D("BtlUncBS_y", "Beam Spot position y coordinate;BS position y [cm];Entries", 200, -2., 2.);
-  meUncBS_z_= ibook.book1D("BtlUncBS_z", "Beam Spot position z coordinate;BS position z [cm];Entries", 200, -2., 2.);
   meUncAmpl_global = ibook.book1D("BtlUncAmpl_global", "Hit Amplitude;Hit Amplitude [pC];Entries", 1500, -10., 3000.);
   meUncEne_global = ibook.book1D("BtlUncEne_global", "Hit Energy;Hit Energy [MeV];Entries", 150, -10., 30.);
-  meUncGlobal_Position_eta1 = ibook.book1D("BtlUncGlobal_eta1", "Distance of Uncalibrated RECO Hits eta index1;Distance [cm];Entries", 200, 260., 280.);
-  meUncGlobal_Position_eta12 = ibook.book1D("BtlUncGlobal_eta12", "Distance of Uncalibrated RECO Hits eta index 12;Distance [cm];Entries", 200, 210., 230.);
-  meUncGlobal_Position_eta24 = ibook.book1D("BtlUncGlobal_eta24", "Distance of Uncalibrated RECO Hits eta index 24;Distance [cm];Entries", 200, 160., 180.);
-  meUncGlobal_Position_eta36 = ibook.book1D("BtlUncGlobal_eta36", "Distance of Uncalibrated RECO Hits eta index 36;Distance [cm];Entries", 200, 120., 140.);
-  meUncGlobal_Position_eta48 = ibook.book1D("BtlUncGlobal_eta48", "Distance of Uncalibrated RECO Hits eta index 48;Distance [cm];Entries", 200, 100., 150.);
-
-  meUncGlobal_Position_z1 = ibook.book1D("BtlUncGlobal_z1", "Distance of Uncalibrated RECO Hits eta index z1;Distance [cm];Entries", 200, -250., -230.);
-  meUncGlobal_Position_z12 = ibook.book1D("BtlUncGlobal_z12", "Distance of Uncalibrated RECO Hits eta index z12;Distance [cm];Entries", 200, -200., -180.);
-  meUncGlobal_Position_z24 = ibook.book1D("BtlUncGlobal_z24", "Distance of Uncalibrated RECO Hits eta index z24;Distance [cm];Entries", 200, -140., -120.);
-  meUncGlobal_Position_z36 = ibook.book1D("BtlUncGlobal_z36", "Distance of Uncalibrated RECO Hits eta index z36;Distance [cm];Entries", 200, -70., -500.);
-  meUncGlobal_Position_z48 = ibook.book1D("BtlUncGlobal_z48", "Distance of Uncalibrated RECO Hits eta index z48;Distance [cm];Entries", 200, -10., 10.);
-
-  meUncGlobal_Position_x_phi1 = ibook.book1D("BtlUncGlobal_x_phi1", "Uncalibrated RECO Hits phi index 1 x coordinate;Distance [cm];Entries", 100, 110., 120.);
-  meUncGlobal_Position_x_phi26 = ibook.book1D("BtlUncGlobal_x_phi26", "Uncalibrated RECO Hits phi index 26 x coordinate;Distance [cm];Entries", 200, 0., 20.);
-  meUncGlobal_Position_x_phi27 = ibook.book1D("BtlUncGlobal_x_phi27", "Uncalibrated RECO Hits phi index 27 x coordinate;Distance [cm];Entries", 100, 0., 10.);
-  meUncGlobal_Position_x_phi28 = ibook.book1D("BtlUncGlobal_x_phi28", "Uncalibrated RECO Hits phi index 28 x coordinate;Distance [cm];Entries", 100, -10., 10.);
-  meUncGlobal_Position_x_phi54 = ibook.book1D("BtlUncGlobal_x_phi54", "Uncalibrated RECO Hits phi index 54 x coordinate;Distance [cm];Entries", 100, -120., -110.);
-  meUncGlobal_Position_x_phi81 = ibook.book1D("BtlUncGlobal_x_phi81", "Uncalibrated RECO Hits phi index 81 x coordinate;Distance [cm];Entries", 100, -10., 0.);
-
-  meUncGlobal_Position_y_phi1 = ibook.book1D("BtlUncGlobal_y_phi1", "Uncalibrated RECO Hits phi index 1 y coordinate;Distance [cm];Entries", 100, 10., 20.);
-  meUncGlobal_Position_y_phi26 = ibook.book1D("BtlUncGlobal_y_phi26", "Uncalibrated RECO Hits phi index 26 y coordinate;Distance [cm];Entries", 100, 110., 120.);
-  meUncGlobal_Position_y_phi27 = ibook.book1D("BtlUncGlobal_y_phi27", "Uncalibrated RECO Hits phi index 27 y coordinate;Distance [cm];Entries", 100, 110., 120.);
-  meUncGlobal_Position_y_phi28 = ibook.book1D("BtlUncGlobal_y_phi28", "Uncalibrated RECO Hits phi index 28 y coordinate;Distance [cm];Entries", 100, 110., 120.);
-  meUncGlobal_Position_y_phi54 = ibook.book1D("BtlUncGlobal_y_phi54", "Uncalibrated RECO Hits phi index 54 y coordinate;Distance [cm];Entries", 100, 10., 20.);
-  meUncGlobal_Position_y_phi81 = ibook.book1D("BtlUncGlobal_y_phi81", "Uncalibrated RECO Hits phi index 81 y coordinate;Distance [cm];Entries", 100, -120., -110.);
-
 
   meGenPt = ibook.book1D("BtlGenPt", "Pt at generator level particles;P_{t} [GeV];Entries", 1000, 0., 500.);
   meGenEne = ibook.book1D("BtlGenEne", "Energy at generator level particles;Energy [GeV];Entries", 800, 0., 500.);
@@ -2349,7 +2276,10 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   meSimHit_tof = ibook.book1D("BtlHit_simHit_tof", "Earlier Sim hit TOF ;Time [ns];Entries", 1000, -3., 18.);
   meSimHit_tof_ID0 = ibook.book1D("BtlHit_simHit_tof_ID0", "Earlier Sim hit TOF with track ID = 0;Time [ns];Entries", 1000, -3., 18.);
   meSimVtx_time = ibook.book1D("BtlSimVtx_time", "Sim Vertex Time;Sim Vertex Time [ns];Entries", 1000, -3., 18.);
-  
+  meSimVtx_z = ibook.book1D("BtlSimVtx_z", "Sim Vertex position - z coordinate;Distance [cm];Entries", 200, -250., -250.);
+  meSimTof = ibook.book1D("BtlSimTof", "Sim TOF: sim timestamp - sim vertx ;Sim TOF [ns];Entries", 1000, -3., 18.);
+  meDeltaTOF = ibook.book1D("BtlDeltaTOF", "#Delta TOF: TOF_{#gamma - like} - TOF_{sim} ;#Delta TOF [ns];Entries", 100, -5., 5.);
+
   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
             std::string name = "BtlUncTimeRUSlice_Zpos_" + std::to_string(ihistoRU + 1);
             std::string title = "Mean Time of Uncalibrated RECO Hits z>0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
