@@ -1,0 +1,32 @@
+cmsExec: Starting job on  Tue Apr 22 11:48:47 CEST 2025
+
+cmsExec: Running on  Linux farmui02.ts.infn.it 3.10.0-1160.119.1.el7.x86_64 #1 SMP Tue Jun 4 14:43:51 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
+cmsExec: System release  AlmaLinux release 8.10 (Cerulean Leopard)
+
+cmsExec: CMSSW_RELEASE_BASE  /cvmfs/cms.cern.ch/el8_amd64_gcc12/cms/cmssw/CMSSW_15_0_0_pre2
+cmsExec: CMSSW_BASE          /gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2
+cmsExec: working directory   /gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/src/Validation/MtdValidation/test
+
+total 3708
+-rw-rw-r-- 1 giraldin gr_cms    1750 Apr 22 11:02 mtdHarvesting_cfg.py
+-rw-r--r-- 1 giraldin gr_cms 1015788 Apr 22 11:28 DQM_V0001_R000000001__Global__CMSSW_X_Y_Z__RECO.root
+-rw-rw-r-- 1 giraldin gr_cms    5754 Apr 22 11:36 mtdValidation_cfg.py
+-rw-r--r-- 1 giraldin gr_cms 2152019 Apr 22 11:48 step3_inDQM.root
+-rw-rw-r-- 1 giraldin gr_cms  618927 Apr 22 11:48 cmsExec_mtdValidation_cfg_20250422_113708.log
+-rw-rw-r-- 1 giraldin gr_cms     566 Apr 22 11:48 cmsExec_mtdHarvesting_cfg_20250422_114847.log
+
+22-Apr-2025 11:48:53 CESTSuccessfully opened file file:step3_inDQM.root
+%MSG-e MtdEleIsoHarvester:   MtdEleIsoHarvester:MtdEleIsoPostProcessor@endProcessBlock  22-Apr-2025 11:48:53 CEST post-events
+Monitoring histograms not found!
+%MSG
+%MSG-e Primary4DVertexHarvester:   Primary4DVertexHarvester:Primary4DVertexPostProcessor@endProcessBlock  22-Apr-2025 11:48:53 CEST post-events
+Monitoring histograms not found!
+%MSG
+DQMFileSaver::globalEndRun()
+22-Apr-2025 11:48:54 CESTClosed file
+2.73user 0.73system 0:06.32elapsed 54%CPU (0avgtext+0avgdata 411744maxresident)k
+1232inputs+0outputs (0major+132396minor)pagefaults 0swaps
+
+cmsExec: cmsRun exit status  0
+
+cmsExec: Ending job on  Tue Apr 22 11:48:54 CEST 2025

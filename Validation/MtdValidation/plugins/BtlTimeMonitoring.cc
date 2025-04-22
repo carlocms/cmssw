@@ -3,15 +3,22 @@
 // Package:    Validation/MtdValidation
 // Class:      BtlLocalRecoValidation
 //
-/**\class BtlLocalRecoValidation BtlLocalRecoValidation.cc Validation/MtdValidation/plugins/BtlLocalRecoValidation.cc
+/**\class BtlTimeMonitoring BtlTimeMonitoring.cc Validation/MtdValidation/plugins/BtlTimeMonitoring.cc
 
- Description: BTL RECO hits and clusters validation
+ Description: BTL Time Monitoring 
 
  Implementation:
      [Notes on implementation]
 */
 
 #include <string>
+#include <fstream>
+#include <iostream> 
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <TH1F.h>
+#include <TFile.h>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/Event.h"
@@ -49,12 +56,28 @@
 
 #include "MTDHit.h"
 
-class BtlLocalRecoValidation : public DQMEDAnalyzer {
+//-----------------------------------------------------
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h" 
+#include "DataFormats/Candidate/interface/Candidate.h"
+#include <CLHEP/Units/GlobalPhysicalConstants.h>
+#include <SimDataFormats/Track/interface/SimTrack.h>
+#include <SimDataFormats/Track/interface/CoreSimTrack.h>
+#include <SimDataFormats/Track/interface/SimTrackContainer.h>
+#include <SimDataFormats/Vertex/interface/CoreSimVertex.h>
+#include <SimDataFormats/Vertex/interface/SimVertex.h>
+#include <SimDataFormats/Vertex/interface/SimVertexContainer.h>
+//-----------------------------------------------------
+
+
+
+class BtlTimeMonitoring : public DQMEDAnalyzer {
 public:
-  explicit BtlLocalRecoValidation(const edm::ParameterSet&);
-  ~BtlLocalRecoValidation() override;
+  explicit BtlTimeMonitoring(const edm::ParameterSet&);
+  ~BtlTimeMonitoring() override;
 
   static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
 
 private:
   void bookHistograms(DQMStore::IBooker&, edm::Run const&, edm::EventSetup const&) override;
@@ -63,7 +86,10 @@ private:
 
   bool isSameCluster(const FTLCluster&, const FTLCluster&);
 
-  // ------------ member data ------------
+  
+  //funzione filtro primary hit con SimTrack:
+ bool isPrimaryTrack(unsigned int trackID, const std::vector<SimTrack>& simTracks, const std::vector<SimVertex>& simVerticesHandle, float& vtx_time, float& vtx_z, float& vtx_x, float& vtx_y); 
+ // ------------ member data ------------
 
   const std::string folder_;
   const double hitMinEnergy_;
@@ -77,6 +103,13 @@ private:
   edm::EDGetTokenT<FTLClusterCollection> btlRecCluToken_;
   edm::EDGetTokenT<MTDTrackingDetSetVector> mtdTrackingHitToken_;
   edm::EDGetTokenT<MtdRecoClusterToSimLayerClusterAssociationMap> r2sAssociationMapToken_;
+  edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
+  
+  //--------  
+  edm::EDGetTokenT<std::vector<reco::GenParticle>> genParticlesToken_;
+  edm::EDGetTokenT<edm::SimTrackContainer> simTracksToken_;
+  edm::EDGetTokenT<edm::SimVertexContainer> simVerticesToken_;
+  //-------
 
   const edm::ESGetToken<MTDGeometry, MTDDigiGeometryRecord> mtdgeoToken_;
   const edm::ESGetToken<MTDTopology, MTDTopologyRcd> mtdtopoToken_;
@@ -268,6 +301,94 @@ private:
   MonitorElement* meUncTimeLVsX_;
   MonitorElement* meUncTimeRVsX_;
 
+  //Plot for TimeCalib
+  static constexpr int nTR_ = 36;
+  static constexpr int nRU_ = 6;
+  static constexpr int nSMphi_ = 96;  
+  static constexpr double calib_EneRecoHit_ = 0.03125;
+  //int count_RU_slice_[nRU_];
+  static constexpr double hitMaxTime_= 19.5;
+  static constexpr double hitMaxAmplitude_= 450.;
+  static constexpr double hitMinimumAmplitude_ = 65.;
+  static constexpr float c_light = 29.97924;
+  //std::vector<std::vector<double>> hit_times(nSMphi_);
+  static constexpr float ptMin_ = 0.; 
+  static constexpr float ptMax_ = 1000.8;
+  static constexpr bool make_primary_filter_ = true;
+  static constexpr double simUnit_ = 1e9;
+  
+  MonitorElement* meUncTimeMean_;
+  MonitorElement* meUncTimeMean_corr_;
+  MonitorElement* meUncTimeRUSlice_Zpos_[nRU_];
+  MonitorElement* meUncTimeRUSlice_Zpos_corr_[nRU_];
+  MonitorElement* meUncTimeRUSlice_Zneg_[nRU_];
+  MonitorElement* meUncTimeRUSlice_Zneg_corr_[nRU_];
+  MonitorElement* meUncTimeRUSlice_corr_ID0_[nRU_];
+  MonitorElement* meUncTimeRUSlice_corr_ID1_[nRU_];
+  MonitorElement* meUncTimeRUSlice_corr_ID2_[nRU_];
+  MonitorElement* meUncTimeRUSlice_corr_ID3_[nRU_];
+  MonitorElement* meUncTimeRU_Zpos_[nRU_][nTR_];
+  MonitorElement* meUncTimeRU_Zpos_corr_[nRU_][nTR_];
+  MonitorElement* meUncTimePhiSlice_[nSMphi_];
+  MonitorElement* meUncTimePhiSlice_corr_[nSMphi_];
+  MonitorElement* meUncAmpl_global;
+  MonitorElement* meUncEne_global;
+
+  MonitorElement* meGenPt;
+  MonitorElement* meGenEne;
+  MonitorElement* meGenEta;
+  MonitorElement* meGenTheta;
+  MonitorElement* meGenPhi;
+  MonitorElement* meGenPdg;
+  MonitorElement* meSimTrkId;
+
+  MonitorElement* meUncTimeMean_corr_ID0;
+  MonitorElement* meUncTimeMean_corr_ID1;
+  MonitorElement* meUncTimeMean_corr_ID2;
+  MonitorElement* meUncTimeMean_corr_ID3;
+
+
+  MonitorElement* meRecoHit_time_corr;
+  MonitorElement* meRecoHit_time_corr_vtx;
+  MonitorElement* meRecoHit_time;
+  MonitorElement* meRecoTof;
+  MonitorElement* meRecoTof_vtx;
+  MonitorElement* meSimHit_tof;
+  MonitorElement* meSimHit_tof_ID0;
+  MonitorElement* meSimVtx_time;
+  MonitorElement* meSimVtx_z;
+  MonitorElement* meSimVtx_x;
+  MonitorElement* meSimVtx_y;
+  MonitorElement* meSimTof;
+  MonitorElement* meSim_time;
+  MonitorElement* meDeltaTOF;
+  MonitorElement* meDeltaTOF_vtx;
+  MonitorElement* meResTime_Rec_Sim;
+  MonitorElement* meRecEnergy;
+  MonitorElement* meRecoTof_fromSimHit;
+  MonitorElement* meRecoTof_fromSimHit_vtx;
+  MonitorElement* meDeltaTof_Reco_Sim_pos;
+  MonitorElement* meDeltaTof_Reco_Sim_pos_vtx;
+  MonitorElement* meRecoHitEta_tail;
+  MonitorElement* meRecoHitEnergy_tail;
+  MonitorElement* meVtx_time_tail;
+  MonitorElement* meVtx_z_tail;
+  MonitorElement* meRecoHit_time_corr_tail;
+  MonitorElement* meRecoHit_time_corr_peak;
+  MonitorElement* meRecoHit_time_corr_tail_vtx;
+  MonitorElement* meRecoHit_time_corr_peak_vtx;
+  MonitorElement* meRecoHitPerTrack;
+  MonitorElement* meSimMom_x;
+  MonitorElement* meSimMom_y;
+  MonitorElement* meSimMom_z;
+  MonitorElement* meSimMom_T;
+  MonitorElement* meSimMom_ene;
+  MonitorElement* meSimTrackP_T;
+  MonitorElement* meSimtrack_ene;
+  MonitorElement* meSimVtx_conv_time;
+  MonitorElement* meSimVtx_conv_z;
+  MonitorElement* meSimVtx_conv_r;
+
   static constexpr int nBinsQ_ = 20;
   static constexpr float binWidthQ_ = 30.;
   static constexpr int nBinsQEta_ = 3;
@@ -285,13 +406,106 @@ private:
   MonitorElement* meTimeResEtavsQ_[nBinsEta_][nBinsEtaQ_];
 };
 
-bool BtlLocalRecoValidation::isSameCluster(const FTLCluster& clu1, const FTLCluster& clu2) {
+bool BtlTimeMonitoring::isSameCluster(const FTLCluster& clu1, const FTLCluster& clu2) {
   return clu1.id() == clu2.id() && clu1.size() == clu2.size() && clu1.x() == clu2.x() && clu1.y() == clu2.y() &&
          clu1.time() == clu2.time();
 }
 
+
+
+bool BtlTimeMonitoring::isPrimaryTrack(unsigned int trackID,
+                                            const std::vector<SimTrack>& simTracks,
+                                            const std::vector<SimVertex>& simVerticesHandle,
+					    float& vtx_time, float& vtx_z, float& vtx_x, float& vtx_y) {
+    for (const auto& track : simTracks) {
+        if (track.trackId() == trackID) {
+            
+		if (track.isPrimary() && track.type() == 22) { // primary particle and photon
+
+                int vtxIdx = track.vertIndex();
+		const auto& simVertex = simVerticesHandle[vtxIdx];
+	    	vtx_time = simVertex.position().t() * simUnit_;
+		vtx_z = simVertex.position().z();
+		vtx_x = simVertex.position().x();
+		vtx_y = simVertex.position().y();
+
+		meSimVtx_time->Fill(vtx_time);
+	        meSimVtx_z->Fill(simVertex.position().z());
+                meSimVtx_x->Fill(simVertex.position().x());
+		meSimVtx_y->Fill(simVertex.position().y());
+		
+		float t_momentum = std::sqrt((track.momentum().x() * track.momentum().x())+(track.momentum().y()*track.momentum().y()));
+		meSimMom_x->Fill(track.momentum().x());
+		meSimMom_y->Fill(track.momentum().y());
+		meSimMom_z->Fill(track.momentum().z());
+		meSimMom_T->Fill(t_momentum);
+		meSimMom_ene->Fill(track.momentum().energy());
+
+		
+		// Debug output
+                std::cout << "\n========== PRIMARY PHOTON FOUND ==========" << std::endl;
+                std::cout << "Track ID: " << track.trackId() << std::endl;
+                std::cout << "PDG ID: " << track.type() << " (Photon)" << std::endl;
+                std::cout << "Momentum (px, py, pz): (" 
+                          << track.momentum().x() << ", "
+                          << track.momentum().y() << ", "
+                          << track.momentum().z() << ")" << std::endl;
+                std::cout << "Vertex Index: " << vtxIdx << std::endl;
+                std::cout << "Vertex Position (x, y, z, t): (" 
+                          << simVertex.position().x() << ", "
+                          << simVertex.position().y() << ", "
+                          << simVertex.position().z() << ", "
+                          << simVertex.position().t() * simUnit_ << ")" << std::endl;
+               // std::cout << "==========================================\n" << std::endl;
+
+
+		return true; // Primary photon no conversion and hit in BTL
+            }
+        
+	    if (std::abs(track.type()) == 11) {
+		    
+		    int vtxIdx_conv = track.vertIndex();
+                    const auto& simVertex_conv = simVerticesHandle[vtxIdx_conv];
+                   
+		    float vtx_r_conv = std::sqrt(simVertex_conv.position().x() * simVertex_conv.position().x() +
+                                                simVertex_conv.position().y() * simVertex_conv.position().y());
+
+                       
+		    if (vtx_r_conv > 114.0 && vtx_r_conv < 119.0) {
+                
+			    unsigned int parentID = simVertex_conv.parentIndex(); 
+		
+			    for (const auto& parent : simTracks) {
+                    
+				    if (parent.trackId() == parentID && parent.isPrimary() && parent.type() == 22) {
+
+					    std::cout << "========== CONVERTED PHOTON FOUND ==========\n" << std::endl;
+					    std::cout << " Converted primary photon" << " vertex trasverse pos: " << vtx_r_conv << std::endl;
+					    //std::cout << "==========================================\n" << std::endl;
+
+					    float vtx_time_conv = simVertex_conv.position().t() * simUnit_;
+					    float vtx_z_conv = simVertex_conv.position().z();
+
+					    meSimVtx_conv_time->Fill(vtx_time_conv);
+					    meSimVtx_conv_z->Fill(vtx_z_conv);                            
+					    meSimVtx_conv_r->Fill(vtx_r_conv);
+
+					    return true; // Se l'elettrone è nel range richiesto, lo selezioniamo
+				    }
+			    }
+		    }
+	    }
+	}
+
+    }
+    return false;
+}
+
+
+
+
 // ------------ constructor and destructor --------------
-BtlLocalRecoValidation::BtlLocalRecoValidation(const edm::ParameterSet& iConfig)
+BtlTimeMonitoring::BtlTimeMonitoring(const edm::ParameterSet& iConfig)
     : folder_(iConfig.getParameter<std::string>("folder")),
       hitMinEnergy_(iConfig.getParameter<double>("HitMinimumEnergy")),
       optionalPlots_(iConfig.getParameter<bool>("optionalPlots")),
@@ -308,23 +522,36 @@ BtlLocalRecoValidation::BtlLocalRecoValidation(const edm::ParameterSet& iConfig)
   mtdTrackingHitToken_ = consumes<MTDTrackingDetSetVector>(iConfig.getParameter<edm::InputTag>("trkHitTag"));
   r2sAssociationMapToken_ = consumes<MtdRecoClusterToSimLayerClusterAssociationMap>(
       iConfig.getParameter<edm::InputTag>("r2sAssociationMapTag"));
-}
+   beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
+   genParticlesToken_ = consumes<std::vector<reco::GenParticle>>(edm::InputTag("genParticles", "", "HLT"));
+   simTracksToken_ = consumes<edm::SimTrackContainer>(edm::InputTag("g4SimHits"));
+   simVerticesToken_ = consumes<edm::SimVertexContainer>(edm::InputTag("g4SimHits"));
 
-BtlLocalRecoValidation::~BtlLocalRecoValidation() {}
+      }
+
+BtlTimeMonitoring::~BtlTimeMonitoring() {}
 
 // ------------ method called for each event  ------------
-void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
+void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
   using namespace edm;
   using namespace std;
   using namespace geant_units::operators;
 
   auto geometryHandle = iSetup.getTransientHandle(mtdgeoToken_);
   const MTDGeometry* geom = geometryHandle.product();
-
   auto topologyHandle = iSetup.getTransientHandle(mtdtopoToken_);
   const MTDTopology* topology = topologyHandle.product();
 
   auto const& cpe = iSetup.getData(cpeToken_);
+
+  // Recupera il BeamSpot--------------------------------------------------------
+  edm::Handle<reco::BeamSpot> beamSpotHandle;
+  iEvent.getByToken(beamSpotToken_, beamSpotHandle);
+
+  if (!beamSpotHandle.isValid()) {
+    throw cms::Exception("BtlTimeMonitoring") << "BeamSpot is not available in the event!";
+  }
+  const reco::BeamSpot& beamSpot = *beamSpotHandle;
 
   auto btlRecHitsHandle = makeValid(iEvent.getHandle(btlRecHitsToken_));
   auto btlSimHitsHandle = makeValid(iEvent.getHandle(btlSimHitsToken_));
@@ -332,13 +559,22 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
   auto mtdTrkHitHandle = makeValid(iEvent.getHandle(mtdTrackingHitToken_));
   const auto& r2sAssociationMap = iEvent.get(r2sAssociationMapToken_);
   MixCollection<PSimHit> btlSimHits(btlSimHitsHandle.product());
+  auto genParticleHandle = makeValid(iEvent.getHandle(genParticlesToken_));
+  auto simVerticesHandle = makeValid(iEvent.getHandle(simVerticesToken_));
+  edm::Handle<edm::SimTrackContainer> simTracks;
+  iEvent.getByToken(simTracksToken_, simTracks);
+  if (!simTracks.isValid()) {
+	  edm::LogError("SimTrack") << "Error: SimTrack collection not found!";
+	  return;
+  }
+
 
 #ifdef EDM_ML_DEBUG
   for (const auto& hits : *mtdTrkHitHandle) {
     if (MTDDetId(hits.id()).mtdSubDetector() == MTDDetId::MTDType::BTL) {
-      LogDebug("BtlLocalRecoValidation") << "MTD cluster DetId " << hits.id() << " # cluster " << hits.size();
+      LogDebug("BtlTimeMonitoring") << "MTD cluster DetId " << hits.id() << " # cluster " << hits.size();
       for (const auto& hit : hits) {
-        LogDebug("BtlLocalRecoValidation")
+        LogDebug("BtlTimeMonitoring")
             << "MTD_TRH: " << hit.localPosition().x() << "," << hit.localPosition().y() << " : "
             << hit.localPositionError().xx() << "," << hit.localPositionError().yy() << " : " << hit.time() << " : "
             << hit.timeError();
@@ -347,15 +583,27 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
   }
 #endif
 
+
+//---------------------
+//bool in_range = false;
+//---------------------
+
+
   // --- Loop over the BTL SIM hits
   std::unordered_map<uint32_t, MTDHit> m_btlSimHits;
+  std::unordered_map<uint32_t, unsigned int> cellTrackMap;
+  std::unordered_map<uint32_t, int> m_btlSimTrackId; 
+
+  float sim_tof = 0;
+  //int sim_tr_ID = 0;
+ 
+
   for (auto const& simHit : btlSimHits) {
     // --- Use only hits compatible with the in-time bunch-crossing
     if (simHit.tof() < 0 || simHit.tof() > 25.)
-      continue;
+      continue; 
 
     DetId id = simHit.detUnitId();
-
     auto simHitIt = m_btlSimHits.emplace(id.rawId(), MTDHit()).first;
 
     // --- Accumulate the energy (in MeV) of SIM hits in the same detector cell
@@ -369,24 +617,113 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       (simHitIt->second).x = hit_pos.x();
       (simHitIt->second).y = hit_pos.y();
       (simHitIt->second).z = hit_pos.z();
+
+      cellTrackMap[id.rawId()] = simHit.trackId();
+      m_btlSimTrackId[id.rawId()] = simHit.offsetTrackId();
+      meSimTrkId->Fill(simHit.offsetTrackId());
+      sim_tof = simHit.tof();
+      
     }
 
   }  // simHit loop
+
+  meSimHit_tof->Fill(sim_tof);
+//---------------------------------------------------------------------
+/*
+for (auto const& simTrack : *simTracks) {
+
+		unsigned int trackID =simTrack.trackId();
+	          
+        float vtx_time = 0;
+        float vtx_z = 0;
+        float vtx_x = 0;
+        float vtx_y = 0;
+
+	if (!isPrimaryTrack(trackID, *simTracks, *simVerticesHandle, vtx_time, vtx_z, vtx_x, vtx_y))
+			  continue;
+
+	float SimTrack_Pt = std::sqrt((simTrack.momentum().x() * simTrack.momentum().x())+(simTrack.momentum().y()*simTrack.momentum().y()));
+        meSimTrackP_T->Fill(SimTrack_Pt);
+        meSimtrack_ene->Fill(simTrack.momentum().energy());
+
+}
+*/
+
+
+
+
+//---------------------------------------------------------------------
+ 
+  for (const auto& genParticle : *genParticleHandle) {
+
+	  if (genParticle.status() == 1) {
+
+          //genParticles.push_back(genParticle);
+      	  float pt = genParticle.pt();
+	  int pdgId = genParticle.pdgId();
+          //int status = genParticle.status();
+	  float gen_ene = genParticle.energy();
+	  float gen_theta = genParticle.theta();
+	  float gen_phi = genParticle.phi();
+          float gen_eta = genParticle.eta();
+
+	  meGenPt->Fill(pt);
+	  meGenEne->Fill(gen_ene);
+	  meGenEta->Fill(gen_eta);
+	  meGenPhi->Fill(gen_phi);
+	  meGenTheta->Fill(gen_theta);
+	  meGenPdg->Fill(pdgId);
+
+	  //-----Taglio pT at generator level--------
+	  //if (pt > ptMin_ && pt < ptMax_) {
+		//  in_range = true;	
+	  //}
+	  }
+  }
+
+ //--------------------------------------------------------------------
+/*
+  std::map<unsigned int, int> recoHitCountPerTrack;
+  for (const auto& recHit : *btlRecHitsHandle) {  
+	  BTLDetId detId = recHit.id();
+	  if(make_primary_filter_) {
+    
+		  uint32_t cellID = detId.rawId();	  
+		  auto simHitTrackIt = cellTrackMap.find(cellID);
+		  unsigned int trackID = simHitTrackIt->second;
+		  float vtx_time = 0;
+                  float vtx_z = 0;
+    		  float vtx_x = 0;
+    		  float vtx_y = 0;
+    
+		  if (!isPrimaryTrack(trackID, *simTracks, *simVerticesHandle, vtx_time, vtx_z, vtx_x, vtx_y))
+			  continue;
+
+		  recoHitCountPerTrack[trackID]++;
+	  }
+  }
+
+  for (const auto& entry : recoHitCountPerTrack) {
+	  meRecoHitPerTrack->Fill(entry.second); 
+  }
+  //--------------------------------------------------------------------
+*/  
 
   // --- Loop over the BTL RECO hits
   unsigned int n_reco_btl = 0;
   unsigned int n_reco_btl_nosimhit = 0;
   for (const auto& recHit : *btlRecHitsHandle) {
-    LogTrace("BtlLocalRecoValidation") << "@RH detid " << recHit.id().rawId() << " r/c/X/dX " << recHit.row() << " "
+    LogTrace("BtlTimeMonitoring") << "@RH detid " << recHit.id().rawId() << " r/c/X/dX " << recHit.row() << " "
                                        << recHit.column() << " " << recHit.position() << " " << recHit.positionError()
                                        << " E,T,dT " << recHit.energy() << " " << recHit.time() << " "
                                        << recHit.timeError();
 
     BTLDetId detId = recHit.id();
+
     DetId geoId = detId.geographicalId(MTDTopologyMode::crysLayoutFromTopoMode(topology->getMTDTopologyMode()));
     const MTDGeomDet* thedet = geom->idToDet(geoId);
     if (thedet == nullptr)
-      throw cms::Exception("BtlLocalRecoValidation") << "GeographicalID: " << std::hex << geoId.rawId() << " ("
+      throw cms::Exception("BtlTimeMonitoring") << "GeographicalID: " << std::hex << geoId.rawId() << " ("
                                                      << detId.rawId() << ") is invalid!" << std::dec << std::endl;
     const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(thedet->topology());
     const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());
@@ -402,6 +739,83 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
     meHitLongPos_->Fill(recHit.position());
 
     meOccupancy_->Fill(global_point.z(), global_point.phi());
+
+//--------------------------------------------------------------
+
+    if(make_primary_filter_) {
+    uint32_t cellID = detId.rawId();
+
+    auto simHitTrackIt = cellTrackMap.find(cellID);
+    unsigned int trackID = simHitTrackIt->second;
+
+    float vtx_time = 0;
+    float vtx_z = 0;
+    float vtx_x = 0;
+    float vtx_y = 0;
+    if (!isPrimaryTrack(trackID, *simTracks, *simVerticesHandle, vtx_time, vtx_z, vtx_x, vtx_y)) 
+            continue; // La traccia non è primaria, scartiamo la RecoHit
+    
+    //if (recoHitCountPerTrack[trackID] > 1)
+    //	    continue; 
+    
+
+
+    //True TOF from Sim-time information:
+    float Sim_TOF = m_btlSimHits[detId.rawId()].time - vtx_time;
+    meSim_time->Fill(m_btlSimHits[detId.rawId()].time);
+    meSimTof->Fill(Sim_TOF);
+
+
+//-----test photonLike TOF correction with reco hits------------------
+   
+    constexpr float c_speed = geant_units::operators::convertMmToCm(CLHEP::c_light);
+    float photon_path_bs = std::sqrt(std::pow(global_point.x() - beamSpot.x0(), 2) + std::pow(global_point.y() - beamSpot.y0(), 2) + std::pow(global_point.z() - beamSpot.z0(), 2));
+    float photon_path_vtx = std::sqrt(std::pow(global_point.x() - vtx_x, 2) + std::pow(global_point.y() - vtx_y, 2) + std::pow(global_point.z() - vtx_z, 2));
+
+    //TOF in the photon-like approximantion:
+    float Reco_TOF = photon_path_bs / c_speed;
+    float Reco_TOF_vtx = photon_path_vtx / c_speed;
+    meRecoTof->Fill(Reco_TOF);
+    meRecoTof_vtx->Fill(Reco_TOF_vtx);
+
+    //Hit time stamp correction:
+    float recoHit_time_corr = recHit.time() - Reco_TOF;
+    float recoHit_time_corr_vtx = recHit.time() - Reco_TOF_vtx;
+    meRecoHit_time ->Fill(recHit.time());
+    meRecoHit_time_corr->Fill(recoHit_time_corr);
+    meRecoHit_time_corr_vtx->Fill(recoHit_time_corr_vtx);
+    
+    //Difference between the TOF photon-Like and the Sim TOF:
+    float Delta_TOF = Reco_TOF - Sim_TOF;
+    float Delta_TOF_vtx = Reco_TOF_vtx - Sim_TOF;
+    meDeltaTOF -> Fill(Delta_TOF);
+    meDeltaTOF_vtx -> Fill(Delta_TOF_vtx);
+
+    float ResTime_Rec_Sim = recHit.time() - m_btlSimHits[detId.rawId()].time;
+    float RecHit_energy = recHit.energy();
+    meResTime_Rec_Sim -> Fill(ResTime_Rec_Sim);
+    meRecEnergy -> Fill(RecHit_energy);
+/*
+    
+    std::cout << "\n========== EVENT INFO ==========" << std::endl;
+    std::cout << "Event ID: " << iEvent.id().event() << std::endl;
+    std::cout << "RecoHit DetID: " << detId.rawId() << std::endl;
+    std::cout << "SimHit TrackID: " << trackID << std::endl;
+
+    // Info sulla SimHit
+    std::cout << "SimHit Time: " << m_btlSimHits[detId.rawId()].time << " ns" << std::endl;
+    std::cout << "SimHit Vertex Time: " << vtx_time << " ns" << std::endl;
+    std::cout << "SimHit Vertex z pos: " << vtx_z << " cm" << std::endl;
+    std::cout << "True TOF: " << Sim_TOF << " ns" << std::endl;
+
+    // Info sulla RecoHit
+    std::cout << "RecoHit Time: " << recHit.time() << " ns" << std::endl;
+    std::cout << "RecoHit Energy: " << recHit.energy() << " MeV" << std::endl;
+    std::cout << "Reco TOF: " << Reco_TOF << " ns" << std::endl;
+    std::cout << "Reco TOF_vtx: " << Reco_TOF_vtx << std::endl;
+    std::cout << "================================\n" << std::endl;    
+*/
+//--------------------------------------------------------------------
 
     if (optionalPlots_) {
       meLocalOccupancy_->Fill(local_point.x() + recHit.position(), local_point.y());
@@ -422,7 +836,7 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
     meHitTvsZ_->Fill(global_point.z(), recHit.time());
 
     // Resolution histograms
-    LogDebug("BtlLocalRecoValidation") << "RecoHit DetId= " << detId.rawId()
+    LogDebug("BtlTimeMonitoring") << "RecoHit DetId= " << detId.rawId()
                                        << " sim hits in id= " << m_btlSimHits.count(detId.rawId());
     if (m_btlSimHits.count(detId.rawId()) == 1 && m_btlSimHits[detId.rawId()].energy > hitMinEnergy_) {
       float longpos_res = recHit.position() - convertMmToCm(m_btlSimHits[detId.rawId()].x);
@@ -435,6 +849,64 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       local_point_sim =
           topo.pixelToModuleLocalPoint(local_point_sim, detId.row(topo.nrows()), detId.column(topo.nrows()));
       const auto& global_point_sim = thedet->toGlobal(local_point_sim);
+
+ 
+//------------------------------------------------------------------------------------------------------------
+ 
+      float Distance_fromSimHit = std::sqrt(std::pow(global_point_sim.x(), 2) + std::pow(global_point_sim.y(), 2) + std::pow(global_point_sim.z(), 2));
+      float Distance_fromSimHit_vtx = std::sqrt(std::pow(global_point_sim.x() - vtx_x, 2) + std::pow(global_point_sim.y() - vtx_y, 2) + std::pow(global_point_sim.z() - vtx_z, 2));
+      
+      float RecoTof_fromSimHit = Distance_fromSimHit /c_speed;
+      float RecoTof_fromSimHit_vtx = Distance_fromSimHit_vtx /c_speed;
+      
+      float DeltaTof_Reco_Sim_pos = RecoTof_fromSimHit - Reco_TOF;
+      float DeltaTof_Reco_Sim_pos_vtx = RecoTof_fromSimHit_vtx - Reco_TOF_vtx; 
+
+      meRecoTof_fromSimHit->Fill(RecoTof_fromSimHit);
+      meRecoTof_fromSimHit_vtx->Fill(RecoTof_fromSimHit_vtx);
+      
+      meDeltaTof_Reco_Sim_pos->Fill(DeltaTof_Reco_Sim_pos);
+      meDeltaTof_Reco_Sim_pos_vtx->Fill(DeltaTof_Reco_Sim_pos_vtx);
+
+
+
+
+
+      if(std::abs(Delta_TOF) > 0.5) {
+  
+	      std::cout << "\n========== EVENT INFO ==========" << std::endl;
+              std::cout << "Event ID: " << iEvent.id().event() << std::endl;
+              std::cout << "RecoHit DetID: " << detId.rawId() << std::endl;
+              std::cout << "SimHit TrackID: " << trackID << std::endl;
+
+    	      std::cout << "\n========== EVENT OF INTEREST ==========" << std::endl;
+              std::cout << "Delta ToF: " << Delta_TOF << std::endl;
+              std::cout << "Photon path - Reco position: " << photon_path_bs << std::endl;
+              std::cout << "Photon path - Sim position: " << Distance_fromSimHit << " TOF: " << RecoTof_fromSimHit << std::endl;
+	      std::cout << "Photon path - SimHit and vtx position: " << Distance_fromSimHit_vtx << " TOF_vtx: " << RecoTof_fromSimHit_vtx << std::endl;
+	      std::cout << "Eta value: " << std::abs(global_point_sim.eta()) << std:: endl;
+	      std::cout << "================================\n" << std::endl;
+    
+	    
+	    meRecoHitEta_tail->Fill(global_point.eta());
+	    meRecoHitEnergy_tail->Fill(recHit.energy());
+	    meVtx_time_tail->Fill(vtx_time);
+	    meVtx_z_tail->Fill(vtx_z);
+	    meRecoHit_time_corr_tail->Fill(recoHit_time_corr);
+      }
+
+      if(std::abs(Delta_TOF) < 0.15) {
+	      meRecoHit_time_corr_peak->Fill(recoHit_time_corr);
+      }
+
+      if(std::abs(Delta_TOF_vtx) > 0.06) {
+	      meRecoHit_time_corr_tail_vtx->Fill(recoHit_time_corr_vtx);
+      }
+      if(std::abs(Delta_TOF_vtx) < 0.06) {
+              meRecoHit_time_corr_peak_vtx->Fill(recoHit_time_corr_vtx);
+      }
+//---------------------------------------------------------------------------------------------------------------
+
 
       meTimeRes_->Fill(time_res);
       meTimeResVsE_->Fill(recHit.energy(), time_res);
@@ -449,14 +921,17 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       meTPullvsE_->Fill(m_btlSimHits[detId.rawId()].energy, time_res / recHit.timeError());
     } else if (m_btlSimHits.count(detId.rawId()) == 0) {
       n_reco_btl_nosimhit++;
-      LogDebug("BtlLocalRecoValidation") << "BTL rec hit with no corresponding sim hit in crystal, DetId= "
+      LogDebug("BtlTimeMonitoring") << "BTL rec hit with no corresponding sim hit in crystal, DetId= "
                                          << detId.rawId() << " geoId= " << geoId.rawId() << " ene= " << recHit.energy()
                                          << " time= " << recHit.time();
     }
 
     n_reco_btl++;
 
+    }//filter close
   }  // recHit loop
+
+
 
   if (n_reco_btl > 0) {
     meNhits_->Fill(std::log10(n_reco_btl));
@@ -477,7 +952,7 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
       DetId detIdObject(cluId);
       const auto& genericDet = geom->idToDetUnit(detIdObject);
       if (genericDet == nullptr) {
-        throw cms::Exception("BtlLocalRecoValidation")
+        throw cms::Exception("BtlTimeMonitoring")
             << "GeographicalID: " << std::hex << cluId << " is invalid!" << std::dec << std::endl;
       }
       n_clus_btl++;
@@ -564,7 +1039,7 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
         }
       }
       if (!matchClu) {
-        edm::LogWarning("BtlLocalRecoValidation")
+        edm::LogWarning("BtlTimeMonitoring")
             << "No valid TrackingRecHit corresponding to cluster, detId = " << detIdObject.rawId();
       }
 
@@ -842,21 +1317,54 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
   // --- This is to count the number of processed events, needed in the harvesting step
   meNevents_->Fill(0.5);
 
+
+
   // --- Loop over the BTL Uncalibrated RECO hits
   if (optionalPlots_) {
     auto btlUncalibRecHitsHandle = makeValid(iEvent.getHandle(btlUncalibRecHitsToken_));
     for (const auto& uRecHit : *btlUncalibRecHitsHandle) {
       BTLDetId detId = uRecHit.id();
 
-      LogTrace("BtlLocalRecoValidation") << "@URH detid " << detId.rawId() << " A " << uRecHit.amplitude().first << " "
+      LogTrace("BtlTimeMonitoring") << "@URH detid " << detId.rawId() << " A " << uRecHit.amplitude().first << " "
                                          << uRecHit.amplitude().second << " T " << uRecHit.time().first << " "
                                          << uRecHit.time().second;
+
 
       // --- Skip UncalibratedRecHits not matched to SimHits
       if (m_btlSimHits.count(detId.rawId()) != 1)
         continue;
 
-      // --- Combine the information from the left and right BTL cell sides
+//----------------------primaty track filter---------------------------
+//---------------------------------------------------------------------
+/*
+      if(make_primary_filter_) {
+
+	      uint32_t cellID = detId.rawId();
+	      auto simHitTrackIt = cellTrackMap.find(cellID);
+	      unsigned int trackID = simHitTrackIt->second;
+      
+	      //if (!isPrimaryTrack(trackID, *simTracks)) {
+	      if (!isPrimaryTrack(trackID, *simTracks, *simVertices)){
+		      continue;
+      	      }
+     }
+
+*/
+//----------------------------------------------------------------------	
+//----------------------------------------------------------------------
+
+      
+      
+      
+//----------pT selection-----------------------------------------------     
+//---------------------------------------------------------------------
+  //    if (!in_range)   
+	//      continue;
+//---------------------------------------------------------------------
+
+
+      
+// --- Combine the information from the left and right BTL cell sides
 
       float nHits = 0.;
       float hit_amplitude = 0.;
@@ -875,20 +1383,139 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
         nHits += 1.;
       }
 
-      hit_amplitude /= nHits;
-      hit_time /= nHits;
 
-      LogDebug("BtlLocalRecoValidation") << "#unc " << nHits << " A/T " << hit_amplitude << " " << hit_time;
+      LogDebug("BtlTimeMonitoring") << "#unc " << nHits << " A/T " << hit_amplitude << " " << hit_time;
       if (nHits == 0.) {
-        edm::LogWarning("BtlLocalRecoValidation") << "Empty uncalibrated hit in DetId " << detId;
+        edm::LogWarning("BtlTimeMonitoring") << "Empty uncalibrated hit in DetId " << detId;
         continue;
       }
 
       hit_amplitude /= nHits;
       hit_time /= nHits;
 
-      if (hit_amplitude < hitMinAmplitude_)
+      //Amplitude selection:hit_amplitude < hitMinimumAmplitude_ || hit_amplitude > hitMaxAmplitude_
+      if (hit_amplitude > hitMaxAmplitude_)
         continue;
+      //if (hit_amplitude < hitMinimumAmplitude_)
+      //  continue;
+
+      //Time cut for the saturation peak:
+      if (hit_time>hitMaxTime_)
+	continue;
+
+      DetId geoId = detId.geographicalId(MTDTopologyMode::crysLayoutFromTopoMode(topology->getMTDTopologyMode()));
+      const MTDGeomDet* thedet = geom->idToDet(geoId);
+      if (thedet == nullptr)
+	      throw cms::Exception("BtlTimeMonitoring") << "GeographicalID: " << std::hex << geoId.rawId() << " ("
+                                                 << detId.rawId() << ") is invalid!" << std::dec << std::endl;
+
+      const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(thedet->topology());
+      const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());
+
+      Local3DPoint local_point(0., 0., 0.);
+      local_point = topo.pixelToModuleLocalPoint(local_point, detId.row(topo.nrows()), detId.column(topo.nrows()));
+      const auto& global_point = thedet->toGlobal(local_point);
+
+
+      //Distance beam spot<->hitted crystal:
+      float DistUnc_BS = std::sqrt(std::pow(global_point.x() - beamSpot.x0(), 2) + std::pow(global_point.y() - beamSpot.y0(), 2) + std::pow(global_point.z() - beamSpot.z0(), 2));
+       //float DistUnc_center = std::sqrt((global_point.x()*global_point.x()) + (global_point.y()*global_point.y()) + (global_point.z()*global_point.z()));
+
+      constexpr float c_cm_ns = geant_units::operators::convertMmToCm(CLHEP::c_light);  // [mm/ns] -> [cm/ns]
+      float TOFUnc_BS = DistUnc_BS / c_cm_ns;
+
+      //Hit time stamp correction:
+      float hit_time_corr = hit_time - TOFUnc_BS;
+
+      
+      //----------Test Track ID global---------------------
+      if (m_btlSimTrackId[detId.rawId()] == 0){
+      	      meUncTimeMean_corr_ID0->Fill(hit_time_corr);
+      }
+
+      if (m_btlSimTrackId[detId.rawId()] == 1){
+              meUncTimeMean_corr_ID1->Fill(hit_time_corr);
+      }
+
+      if (m_btlSimTrackId[detId.rawId()] == 2){
+              meUncTimeMean_corr_ID2->Fill(hit_time_corr);
+      }
+
+      if (m_btlSimTrackId[detId.rawId()] == 3){
+              meUncTimeMean_corr_ID3->Fill(hit_time_corr);
+      }
+      
+
+      //------------Global plots-------------
+      meUncTimeMean_->Fill(hit_time);
+      meUncTimeMean_corr_->Fill(hit_time_corr);
+      meUncAmpl_global->Fill(hit_amplitude);
+      meUncEne_global->Fill(hit_amplitude*0.03125);
+
+      //----------Sensor Module Index extrapolation------------
+      auto index = topology->btlIndex(geoId.rawId());
+      //uint32_t phi_index = index.first;
+      uint32_t eta_index = index.second;
+      
+      //----------Fill histograms for each SM slice------------
+      meUncTimePhiSlice_[eta_index-1]->Fill(hit_time);
+      meUncTimePhiSlice_corr_[eta_index-1]->Fill(hit_time_corr);
+
+      //if (eta_index == 72) { 
+      //std::cout << " TRAY: " << detId.mtdRR() << " | RU: " << detId.globalRunit() << " | SM ETA: " << eta_index << " | SM PHI: " << phi_index << " | CRYSTAL: " << detId.crystal() << std::endl;
+      //std::cout << " GLOBAL POINT -- x: " << global_point.x() << " | y: " << global_point.y() << " | z: " << global_point.z() << std::endl;
+      //}
+
+      //---------taglio tempo corrected per RU slice-----------
+      //if ((detId.globalRunit() == 1 && hit_time_corr > 8.) || (detId.globalRunit() >= 2 && detId.globalRunit() <= 6 && hit_time_corr > 6.)) {  
+	//      continue;  
+      //}
+
+/*
+      //----------Rimepimento per Crystal slice nella SM con indice fissato---------------	
+	if(eta_index==31) {
+		std::cout << " valore SM slice index: " << eta_index << " valore crystal idenx: " << detId.crystal() << std::endl;
+	}
+*/
+
+	//------------------------Histo per fixed RU slice (z>0)----------------------------
+	if(detId.mtdSide() == 1) {
+                      meUncTimeRUSlice_Zpos_[detId.globalRunit()-1]->Fill(hit_time);
+		      meUncTimeRUSlice_Zpos_corr_[detId.globalRunit()-1]->Fill(hit_time_corr);
+
+	//------------------------Histo per single RU inside the same slice (z>0)-----------      
+	//meUncTimeRU_Zpos_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time);
+	//meUncTimeRU_Zpos_corr_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time_corr);	
+	}
+	//-----------------------------------------------------------------------------------
+
+	//------------------------Histo per fixed RU slice (z<0)----------------------------
+        if(detId.mtdSide() == 0) {
+                      meUncTimeRUSlice_Zneg_[detId.globalRunit()-1]->Fill(hit_time);
+                      meUncTimeRUSlice_Zneg_corr_[detId.globalRunit()-1]->Fill(hit_time_corr);
+	}
+
+	
+	//-----------------Histo per fixed RU slice per Track ID-test----------------------------
+	
+	if(m_btlSimTrackId[detId.rawId()] == 0) {
+                      meUncTimeRUSlice_corr_ID0_[detId.globalRunit()-1]->Fill(hit_time_corr);
+
+        }
+	if(m_btlSimTrackId[detId.rawId()] == 1) {
+                      meUncTimeRUSlice_corr_ID1_[detId.globalRunit()-1]->Fill(hit_time_corr);
+
+        }
+	if(m_btlSimTrackId[detId.rawId()] == 2) {
+                      meUncTimeRUSlice_corr_ID2_[detId.globalRunit()-1]->Fill(hit_time_corr);
+
+        }
+	if(m_btlSimTrackId[detId.rawId()] == 3) {
+                      meUncTimeRUSlice_corr_ID3_[detId.globalRunit()-1]->Fill(hit_time_corr);
+
+        }
+	
+//-----------------------------------------------------------------------------------------------------------------------------------------
 
       // --- Fill the histograms
 
@@ -902,7 +1529,7 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
         DetId geoId = detId.geographicalId(MTDTopologyMode::crysLayoutFromTopoMode(topology->getMTDTopologyMode()));
         const MTDGeomDet* thedet = geom->idToDet(geoId);
         if (thedet == nullptr)
-          throw cms::Exception("BtlLocalRecoValidation") << "GeographicalID: " << std::hex << geoId.rawId() << " ("
+          throw cms::Exception("BtlTimeMonitoring") << "GeographicalID: " << std::hex << geoId.rawId() << " ("
                                                          << detId.rawId() << ") is invalid!" << std::dec << std::endl;
         const ProxyMTDTopology& topoproxy = static_cast<const ProxyMTDTopology&>(thedet->topology());
         const RectangularMTDTopology& topo = static_cast<const RectangularMTDTopology&>(topoproxy.specificTopology());
@@ -944,11 +1571,212 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
         meTimeResEtavsQ_[etaBin][qBin]->Fill(time_res);
       }
     }  // uRecHit loop}
-  }
+  }//optional plots
+
+//--------------------------------------------------------------------------------
+/*
+
+//------------------Histogram analysis for SM granularity-------------------------
+
+//------------------Histogram analysis for SM granularity-------------------------
+std::ofstream TrMeanFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Mean_RU_slice_pos_corr.txt");
+std::ofstream stdDevFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/STD_RU_slice_pos_corr.txt");
+std::ofstream ModaFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Moda_RU_slice_pos_corr.txt");
+std::ofstream TrMeanErrFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Mean_Error_RU_slice_pos_corr.txt");
+std::ofstream MedianFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Median_RU_slice_pos_corr.txt");
+std::ofstream MedianErrFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Median_Error_RU_slice_pos_corr.txt");
+std::ofstream RMSFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/RMS_RU_slice_pos_corr.txt");
+
+
+for (int slice = 0; slice < nRU_; ++slice) {
+    if (!meUncTimeRUSlice_Zpos_corr_[slice]) continue;
+
+    TH1F* hist_1 = meUncTimeRUSlice_Zpos_corr_[slice]->getTH1F();
+
+    if (hist_1->GetEntries() > 0) {
+    // Media e deviazione standard direttamente dall'istogramma
+    double mean_1 = hist_1->GetMean();
+    double stdDev_1 = hist_1->GetStdDev();
+    double meanError_1 = hist_1->GetMeanError();
+    double stdDevError_1 = hist_1->GetStdDevError();
+    double RMS_1 = hist_1->GetRMS();
+
+    // Moda
+    int binWithMax_1 = hist_1->GetMaximumBin();
+    double mode_1 = hist_1->GetBinCenter(binWithMax_1);
+    double modeError_1 = hist_1->GetBinWidth(binWithMax_1) / sqrt(12.0);
+
+    // Median
+    double median_1 = 0;
+    double q_1 = 0.5;  
+    hist_1->GetQuantiles(1, &median_1, &q_1);
+
+    // Median Error: 1.2533 * sigma / sqrt(N)
+    double N_1 = hist_1->GetEntries();
+    double medianError_1 = (N_1 > 0) ? (1.2533 * stdDev_1 / sqrt(N_1)) : 0.0;
+
+    // Output dei risultati nei file
+    TrMeanFile_1 << slice << "\t" << mean_1 << "\t" << meanError_1 << "\n";
+    stdDevFile_1 << slice << "\t" << stdDev_1 << "\t" << stdDevError_1 <<"\n";
+    ModaFile_1 << slice << "\t" << mode_1 << "\t" << modeError_1 << "\n";
+    TrMeanErrFile_1 << slice << "\t" << meanError_1 << "\n";
+    MedianFile_1 << slice << "\t" << median_1 << "\t" << medianError_1 << "\n";
+    MedianErrFile_1 << slice << "\t" << medianError_1 << "\n";
+    RMSFile_1 << slice << "\t" << RMS_1 << "\n";
+
+    // salvataggio istogramma
+    //    std::string filename_1 = "/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/plot/Hist_RU_slice_Zpos_" + std::to_string(slice) + ".root";
+     //   TFile outFile_1(filename_1.c_str(), "RECREATE"); 
+     //   hist_1->Write();  
+     //   outFile_1.Close(); 
+
+    }
 }
+TrMeanFile_1.close();
+stdDevFile_1.close();
+ModaFile_1.close();
+TrMeanErrFile_1.close();
+MedianFile_1.close();
+MedianErrFile_1.close();
+RMSFile_1.close();
+
+//---------------------------------------------------------------------------------------------
+std::ofstream TrMeanFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Mean_RU_slice_neg_corr.txt");
+std::ofstream stdDevFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/STD_RU_slice_neg_corr.txt");
+std::ofstream ModaFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Moda_RU_slice_neg_corr.txt");
+std::ofstream TrMeanErrFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Mean_Error_RU_slice_neg_corr.txt");
+std::ofstream MedianFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Median_RU_slice_neg_corr.txt");
+std::ofstream MedianErrFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Median_Error_RU_slice_neg_corr.txt");
+std::ofstream RMSFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/RMS_RU_slice_neg_corr.txt");
+
+for (int slice = 0; slice < nRU_; ++slice) {
+    if (!meUncTimeRUSlice_Zneg_corr_[slice]) continue;
+
+    TH1F* hist = meUncTimeRUSlice_Zneg_corr_[slice]->getTH1F();
+
+    if (hist->GetEntries() > 0) {
+    // Media e deviazione standard direttamente dall'istogramma
+    double mean = hist->GetMean();
+    double stdDev = hist->GetStdDev();
+    double meanError = hist->GetMeanError();
+    double stdDevError = hist->GetStdDevError();
+    double RMS = hist->GetRMS();
+
+    // Moda
+    int binWithMax = hist->GetMaximumBin();
+    double mode = hist->GetBinCenter(binWithMax);
+    double modeError = hist->GetBinWidth(binWithMax) / sqrt(12.0);
+    
+    // Median
+    double median = 0;
+    double q = 0.5;
+    hist->GetQuantiles(1, &median, &q);
+
+    // Median Error: 1.2533 * sigma / sqrt(N)
+    double N = hist->GetEntries();
+    double medianError = (N > 0) ? (1.2533 * stdDev / sqrt(N)) : 0.0;
+    
+
+    // Output dei risultati nei file
+    TrMeanFile << slice << "\t" << mean << "\t" << meanError << "\n";
+    stdDevFile << slice << "\t" << stdDev << "\t" << stdDevError <<"\n";
+    ModaFile << slice << "\t" << mode << "\t" << modeError << "\n";
+    TrMeanErrFile << slice << "\t" << meanError << "\n";
+    MedianFile << slice << "\t" << median << "\t" << medianError << "\n";
+    MedianErrFile << slice << "\t" << medianError << "\n";
+    RMSFile << slice << "\t" << RMS << "\n";
+
+    // salvataggio istogramma
+       // std::string filename = "/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/plot/Hist_RU_slice_Zneg_" + std::to_string(slice) + ".root";
+        //TFile outFile(filename.c_str(), "RECREATE");
+        //hist->Write();
+        //outFile.Close();
+    }
+}
+TrMeanFile.close();
+stdDevFile.close();
+ModaFile.close();
+TrMeanErrFile.close();
+MedianFile.close();
+MedianErrFile.close();
+RMSFile.close();
+
+
+//---------------------------------------------------------------------------------------------
+
+std::ofstream TrMeanFile_sm("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Mean_SM_slice_corr.txt");
+std::ofstream stdDevFile_sm("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/STD_SM_slice_corr.txt");
+std::ofstream ModaFile_sm("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Moda_SM_slice_corr.txt");
+std::ofstream TrMeanErrFile_sm("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Mean_Error_SM_slice_corr.txt");
+std::ofstream MedianFile_sm("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Median_SM_slice_corr.txt");
+std::ofstream MedianErrFile_sm("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Median_Error_SM_slice_corr.txt");
+std::ofstream RMSFile_sm("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/RMS_SM_slice_corr.txt");
+
+for (int slice = 0; slice < nSMphi_; ++slice) {
+    if (!meUncTimePhiSlice_corr_[slice]) continue;
+
+    TH1F* hist_sm = meUncTimePhiSlice_corr_[slice]->getTH1F();
+
+
+    if (hist_sm->GetEntries() > 0) {
+
+    // Media e deviazione standard direttamente dall'istogramma
+    double mean_sm = hist_sm->GetMean();
+    double stdDev_sm = hist_sm->GetStdDev();
+    double meanError_sm = hist_sm->GetMeanError();
+    double stdDevError_sm = hist_sm->GetStdDevError();
+    double RMS_sm = hist_sm->GetRMS();
+
+    // Moda
+    int binWithMax_sm = hist_sm->GetMaximumBin();
+    double mode_sm = hist_sm->GetBinCenter(binWithMax_sm);
+    double modeError_sm = hist_sm->GetBinWidth(binWithMax_sm) / sqrt(12.0);
+    
+    // Median
+    double median_sm = 0;
+    double q_sm = 0.5;  
+    hist_sm->GetQuantiles(1, &median_sm, &q_sm);
+
+    // Median Error: 1.2533 * sigma / sqrt(N)
+    double N_sm = hist_sm->GetEntries();
+    double medianError_sm = (N_sm > 0) ? (1.2533 * stdDev_sm / sqrt(N_sm)) : 0.0;
+    
+    
+    // Output dei risultati nei file
+    TrMeanFile_sm << slice << "\t" << mean_sm << "\t" << meanError_sm << "\n";
+    stdDevFile_sm << slice << "\t" << stdDev_sm << "\t" << stdDevError_sm <<"\n";
+    ModaFile_sm << slice << "\t" << mode_sm << "\t" << modeError_sm << "\n";
+    TrMeanErrFile_sm << slice << "\t" << meanError_sm << "\n";
+    MedianFile_sm << slice << "\t" << median_sm << "\t" << medianError_sm << "\n";
+    MedianErrFile_sm << slice << "\t" << medianError_sm << "\n";
+    RMSFile_sm << slice << "\t" << RMS_sm << "\n";
+    }
+
+
+
+}
+TrMeanFile_sm.close();
+stdDevFile_sm.close();
+ModaFile_sm.close();
+TrMeanErrFile_sm.close();
+MedianFile_sm.close();
+MedianErrFile_sm.close();
+RMSFile_sm.close();
+
+
+*/
+
+
+
+
+//-----------------------------------------------------------------------------------------------------------
+
+}//analyzer()
+
+
 
 // ------------ method for histogram booking ------------
-void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
+void BtlTimeMonitoring::bookHistograms(DQMStore::IBooker& ibook,
                                             edm::Run const& run,
                                             edm::EventSetup const& iSetup) {
   ibook.setCurrentFolder(folder_);
@@ -1619,6 +2447,153 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   }
 
   // --- UncalibratedRecHits histograms
+  
+  meUncTimeMean_ = ibook.book1D("BtlUncTimeMean","BTL UNCALIBRATED RECO hits ToA;ToA_{UNC RECO} [ns]", 100, 0., 25.);
+  meUncTimeMean_corr_ = ibook.book1D("BtlUncTimeMean_corr", "Mean Time of Uncalibrated RECO Hits with TOF correction;Time [ns];Entries", 1000, -3., 18.);
+  meUncAmpl_global = ibook.book1D("BtlUncAmpl_global", "Hit Amplitude;Hit Amplitude [pC];Entries", 1500, -10., 3000.);
+  meUncEne_global = ibook.book1D("BtlUncEne_global", "Hit Energy;Hit Energy [MeV];Entries", 150, -10., 30.);
+
+  meGenPt = ibook.book1D("BtlGenPt", "Pt at generator level particles;P_{t} [GeV];Entries", 1000, 0., 500.);
+  meGenEne = ibook.book1D("BtlGenEne", "Energy at generator level particles;Energy [GeV];Entries", 800, 0., 500.);
+  meGenEta = ibook.book1D("BtlGenEta", "#eta at generator level particles; #eta;Entries", 100, -4., 4.);
+  meGenTheta = ibook.book1D("BtlGenTheta", "#theta at generator level particles; #theta [rad];Entries", 100, -3.14159, 3.14159);
+  meGenPhi = ibook.book1D("BtlGenPhi", "#phi at generator level particles; #phi [rad];Entries", 100, -3.14159, 3.14159);
+  meGenPdg = ibook.book1D("BtlGenPdg", "Pdg number at generator level particles; Pdg number;Entries", 2000, -1000, 1000);
+
+  meSimTrkId = ibook.book1D("BtlSimTrkId", "Track ID number sim Hit; Track ID;Entries", 100, 0, 100);
+
+  meUncTimeMean_corr_ID0 = ibook.book1D("BtlUncTimeMean_corr_ID0", "Mean Time of Uncalibrated RECO Hits with TOF correction;Time [ns];Entries", 1000, -3., 18.);
+  meUncTimeMean_corr_ID1 = ibook.book1D("BtlUncTimeMean_corr_ID1", "Mean Time of Uncalibrated RECO Hits with TOF correction;Time [ns];Entries", 1000, -3., 18.);
+  meUncTimeMean_corr_ID2 = ibook.book1D("BtlUncTimeMean_corr_ID2", "Mean Time of Uncalibrated RECO Hits with TOF correction;Time [ns];Entries", 1000, -3., 18.);
+  meUncTimeMean_corr_ID3 = ibook.book1D("BtlUncTimeMean_corr_ID3", "Mean Time of Uncalibrated RECO Hits with TOF correction;Time [ns];Entries", 1000, -3., 18.);
+
+  meRecoHit_time_corr = ibook.book1D("BtlRecoHit_TOF_corr", "Mean Time of RECO Hits with TOF correction;Time [ns];Entries", 1000, -3., 18.);
+  meRecoHit_time_corr_vtx = ibook.book1D("BtlRecoHit_TOF_corr_vtx", "Mean Time of RECO Hits with TOF correction;Time [ns];Entries", 1000, -3., 18.);
+  meRecoHit_time = ibook.book1D("BtlRecoHit_time", "Reco Hit time stamp;RecoHit Time [ns];Entries", 1000, -3., 18.);
+  meSimHit_tof = ibook.book1D("BtlHit_simHit_tof", "Earlier Sim hit TOF ;Time [ns];Entries", 1000, -3., 18.);
+  meSimHit_tof_ID0 = ibook.book1D("BtlHit_simHit_tof_ID0", "Earlier Sim hit TOF with track ID = 0;Time [ns];Entries", 1000, -3., 18.);
+  meSimVtx_time = ibook.book1D("BtlSimVtx_time", "Sim Vertex Time;Sim Vertex Time [ns];Entries", 1000, -25., 25.);
+  meSimVtx_z = ibook.book1D("BtlSimVtx_z", "Sim Vertex position - z coordinate;Distance [cm];Entries", 250, -25., 25.);
+  meSimVtx_x = ibook.book1D("BtlSimVtx_x", "Sim Vertex position - x coordinate;Distance [cm];Entries", 200, -15., 15.);
+  meSimVtx_y = ibook.book1D("BtlSimVtx_y", "Sim Vertex position - y coordinate;Distance [cm];Entries", 200, -15., 15.);
+  meSimTof = ibook.book1D("BtlSimTof", "Sim TOF: sim timestamp - sim vertx ;Sim TOF [ns];Entries", 500, -3., 18.);
+  meRecoTof = ibook.book1D("BtlRecoTof", "reco TOF photon-like  ;Reco TOF [ns];Entries", 500, -3., 18.);
+  meRecoTof_vtx = ibook.book1D("BtlRecoTof_vtx", "reco TOF photon-like  ;Reco TOF [ns];Entries", 500, -3., 18.);
+  meSim_time = ibook.book1D("BtlSim_time", "SimHit timestamp in BTL;Sim Time [ns];Entries", 500, -3., 18.);
+  meDeltaTOF = ibook.book1D("BtlDeltaTOF", "#Delta TOF: TOF_{#gamma - like} - TOF_{sim} ;#Delta TOF [ns];Entries", 500, -4., 4.);
+  meDeltaTOF_vtx = ibook.book1D("BtlDeltaTOF_vtx", "#Delta TOF: TOF_{#gamma - like} - TOF_{sim} ;#Delta TOF [ns];Entries", 500, -4., 4.);
+  meResTime_Rec_Sim = ibook.book1D("BtlResTime_Rec_Sim", "Res Time: Time_{Reco} - Time_{Sim} ;Time_{Reco} - Time_{Sim} [ns];Entries", 500, -2., 2.);
+  meRecEnergy = ibook.book1D("BtlRecEnergy", "Reco Hit Energy; Energy [MeV];Entries", 100, 0., 50.);
+  meRecoTof_fromSimHit = ibook.book1D("BtlRecoTof_fromSimHit", "Tof reco hit from Sim Hit position;Time [ns];Entries", 500, -3., 18.);
+  meRecoTof_fromSimHit_vtx = ibook.book1D("BtlRecoTof_fromSimHit_vtx", "Tof reco hit from Sim Hit position and vtx_z posiotion;Time [ns];Entries", 500, -3., 18.);
+  meDeltaTof_Reco_Sim_pos = ibook.book1D("BtlDeltaTof_Reco_Sim_pos", "#Delta TOF ;#Delta TOF [ns];Entries", 500, -4., 4.);
+  meDeltaTof_Reco_Sim_pos_vtx = ibook.book1D("BtlDeltaTof_Reco_Sim_pos_vtx", "#Delta TOF ;#Delta TOF [ns];Entries", 500, -4., 4.);
+  meRecoHitEta_tail = ibook.book1D("BtlRecoHitEta_tail", "BTL RECO hits #eta ->tail;#eta_{RECO}", 100, -1.55, 1.55);
+  meRecoHitEnergy_tail = ibook.book1D("BtlRecoHitEnergy_tail", "Reco Hit Energy -> Tail; Energy [MeV];Entries", 150, 0., 30.);
+  meVtx_time_tail = ibook.book1D("BtlSimVtx_time_tail", "Sim Vertex Time;Sim Vertex Time [ns];Entries", 1000, -2., 2.);
+  meVtx_z_tail = ibook.book1D("BtlSimVtx_z_tail", "Sim Vertex position - z coordinate;Distance [cm];Entries", 200, -10., 10.);
+  meRecoHit_time_corr_tail = ibook.book1D("BtlRecoHit_TOF_corr_tail", "Mean Time of RECO Hits with TOF correction tail;Time [ns];Entries", 1000, -3., 18.);
+  meRecoHit_time_corr_peak = ibook.book1D("BtlRecoHit_TOF_corr_peak", "Mean Time of RECO Hits with TOF correction tail;Time [ns];Entries", 1000, -3., 18.);
+  meRecoHit_time_corr_tail_vtx = ibook.book1D("BtlRecoHit_TOF_corr_tail_vtx", "Mean Time of RECO Hits with TOF correction tail;Time [ns];Entries", 1000, -3., 18.);
+  meRecoHit_time_corr_peak_vtx = ibook.book1D("BtlRecoHit_TOF_corr_peak_vtx", "Mean Time of RECO Hits with TOF correction tail;Time [ns];Entries", 1000, -3., 18.);
+  meRecoHitPerTrack = ibook.book1D("BtlRecoHitPerTrack", "Number of RecoHit per each SimTrack;Number of RecoHit;Entries", 10, 0., 10.);
+  meSimMom_x = ibook.book1D("BtlSimMom_x", "Sim Track Momentum x;Sim Track p_{x} [GeV/c];Entries", 1000, -0.2, 0.2);
+  meSimMom_y = ibook.book1D("BtlSimMom_y", "Sim Track Momentum y;Sim Track p_{y} [GeV/c];Entries", 1000, -0.2, 0.2);
+  meSimMom_z = ibook.book1D("BtlSimMom_z", "Sim Track Momentum z;Sim Track p_{z} [GeV/c];Entries", 1000, -0.2, 0.2);
+  meSimMom_ene = ibook.book1D("BtlSimMom_ene", "Sim Track Momentum ene; Sim Track Energy [GeV];Entries", 1000, 0., 2);
+  meSimMom_T = ibook.book1D("BtlSimMom_T", "Sim Track Transverse Momentum;Sim Track p_{T} [GeV/c];Entries", 1000, 0., 0.5);
+  meSimTrackP_T = ibook.book1D("BtlSimTrackP_T", "Sim Track Transverse Momentum;Sim Track p_{T} [GeV/c];Entries", 1000, 0., 50);
+  meSimtrack_ene = ibook.book1D("BtlSimtrack_ene", "Sim Track Momentum ene; Sim Track Energy [GeV];Entries", 10000, 0., 200);
+  meSimVtx_conv_time = ibook.book1D("BtlSimVtx_conv_time", "Sim Vertex Time converted photon;Sim Vertex Time [ns];Entries", 1000, -25., 25.);
+  meSimVtx_conv_z = ibook.book1D("BtlSimVtx_conv_z", "Sim Vertex position - z coordinate - converted photon;Distance [cm];Entries", 250, -25., 25.);
+  meSimVtx_conv_r = ibook.book1D("BtlSimVtx_conv_r", "Sim Vertex radial posiotion -converted photon;Distance [cm];Entries", 500, 0., 150.);
+
+  for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_Zpos_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits z>0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
+            meUncTimeRUSlice_Zpos_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+    }
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_Zpos_corr_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits z>0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
+            meUncTimeRUSlice_Zpos_corr_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+    }
+
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_Zneg_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits z<0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
+            meUncTimeRUSlice_Zneg_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+    }
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_Zneg_corr_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits z<0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
+            meUncTimeRUSlice_Zneg_corr_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+    }
+
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_corr_ID0" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits wit Track ID 0 and (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
+            meUncTimeRUSlice_corr_ID0_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+    }
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_corr_ID1" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits wit Track ID 1 and (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
+            meUncTimeRUSlice_corr_ID1_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+    }
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_corr_ID2" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits wit Track ID 2 and (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
+            meUncTimeRUSlice_corr_ID2_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+    }
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_corr_ID3" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits wit Track ID 3 and (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
+            meUncTimeRUSlice_corr_ID3_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+    }
+
+
+   for (unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+    for (unsigned int ihistoTR = 0; ihistoTR < nTR_; ++ihistoTR) {
+        // Costruzione del nome e del titolo dell'istogramma
+        std::string name = "UncTime_RU" + std::to_string(ihistoRU + 1) + "_TR" + std::to_string(ihistoTR + 1);
+        std::string title = "Uncorrected Time for RU " + std::to_string(ihistoRU + 1) + " TR " + std::to_string(ihistoTR + 1);
+
+        std::string name_corr = "UncTimeCorr_RU" + std::to_string(ihistoRU + 1) + "_TR" + std::to_string(ihistoTR + 1);
+        std::string title_corr = "Corrected Time for RU " + std::to_string(ihistoRU + 1) + " TR " + std::to_string(ihistoTR + 1);
+
+        // Definizione degli istogrammi
+        meUncTimeRU_Zpos_[ihistoRU][ihistoTR] = ibook.book1D(name, title, 250, -5., 25.);
+        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR] = ibook.book1D(name_corr, title_corr, 250, -5., 25.);
+
+	meUncTimeRU_Zpos_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); // X-axis
+        meUncTimeRU_Zpos_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2);    // Y-axis
+
+        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); // X-axis
+        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2);    // Y-axis
+    }
+}
+
+
+for (uint32_t i = 0; i < nSMphi_; ++i) {
+  meUncTimePhiSlice_[i] = ibook.book1D(
+      Form("meUncTimePhiSlice_%d", i),
+      Form("BTL Hit Time Distribution for Phi Slice %d", i),
+     1000, -5., 25.);
+  meUncTimePhiSlice_[i]->setAxisTitle("Time [ns]", 1);
+  meUncTimePhiSlice_[i]->setAxisTitle("Entries/30ps", 2);  
+
+  meUncTimePhiSlice_corr_[i] = ibook.book1D(
+      Form("meUncTimePhiSlice_corr_%d", i),
+      Form("Corrected BTL Hit Time Distribution for Phi Slice %d", i),
+      1000, -5., 25.);
+  meUncTimePhiSlice_corr_[i]->setAxisTitle("Time [ns]", 1); 
+  meUncTimePhiSlice_corr_[i]->setAxisTitle("Entries/30ps", 2); 
+}
+
 
   if (optionalPlots_) {
     meUncEneLVsX_ = ibook.bookProfile("BTLUncEneLVsX",
@@ -1690,10 +2665,10 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
-void BtlLocalRecoValidation::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+void BtlTimeMonitoring::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   edm::ParameterSetDescription desc;
 
-  desc.add<std::string>("folder", "MTD/BTL/LocalReco");
+  desc.add<std::string>("folder", "MTD/BTL/RecoTiming");
   desc.add<edm::InputTag>("recHitsTag", edm::InputTag("mtdRecHits", "FTLBarrel"));
   desc.add<edm::InputTag>("uncalibRecHitsTag", edm::InputTag("mtdUncalibratedRecHits", "FTLBarrel"));
   desc.add<edm::InputTag>("simHitsTag", edm::InputTag("mix", "g4SimHitsFastTimerHitsBarrel"));
@@ -1705,7 +2680,7 @@ void BtlLocalRecoValidation::fillDescriptions(edm::ConfigurationDescriptions& de
   desc.add<bool>("UncalibRecHitsPlots", false);
   desc.add<double>("HitMinimumAmplitude", 30.);  // [pC]
 
-  descriptions.add("btlLocalRecoValid", desc);
+  descriptions.add("btlTimeMonitoring", desc);
 }
 
-DEFINE_FWK_MODULE(BtlLocalRecoValidation);
+DEFINE_FWK_MODULE(BtlTimeMonitoring);
