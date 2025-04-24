@@ -33,7 +33,7 @@ process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
 
 file_list = [
         f'file:/eos/infnts/cms/store/user/cgiraldi/SingleGamma_FlatEne_low_energy/step3_{i}.root'
-        for i in range (1, 200)
+        for i in range (1, 300)
 ]
 
 # --- in case of condor: sys.argv[1]
@@ -62,7 +62,8 @@ for a in process.aliases: delattr(process, a)
 process.load("Validation.MtdValidation.btlSimHitsValid_cfi")
 process.load("Validation.MtdValidation.btlDigiHitsValid_cfi")
 process.load("Validation.MtdValidation.btlLocalRecoValid_cfi")
-btlValidation = cms.Sequence(process.btlSimHitsValid + process.btlDigiHitsValid + process.btlLocalRecoValid)
+process.load("Validation.MtdValidation.btlTimeMonitoring_cfi")
+btlValidation = cms.Sequence(process.btlSimHitsValid + process.btlDigiHitsValid + process.btlLocalRecoValid + process.btlTimeMonitoring)
 
 # --- ETL Validation
 process.load("Validation.MtdValidation.etlSimHitsValid_cfi")
@@ -76,7 +77,7 @@ process.load("Validation.MtdValidation.mtdEleIsoValid_cfi")
 process.load("Validation.MtdValidation.vertices4DValid_cfi")
 
 # --- BTL Time Monitoring
-process.load("Validation.MtdValidation.btlTimeMonitoring_cfi")
+#process.load("Validation.MtdValidation.btlTimeMonitoring_cfi")
 
 
 # process.btlDigiHitsValid.optionalPlots = True
@@ -85,9 +86,10 @@ process.btlLocalRecoValid.optionalPlots = True
 # process.etlLocalRecoValid.optionalPlots = True
 # process.mtdTracksValid.optionalPlots = True
 # process.vertices4DValid.optionalPlots = True
+process.btlTimeMonitoring.optionalPlots = True
 
 #process.validation = cms.Sequence(btlValidation + etlValidation + process.mtdTracksValid + process.mtdEleIsoValid + process.vertices4DValid)
-process.validation = cms.Sequence(btlValidation + process.mtdTracksValid + process.btlTimeMonitoring)
+process.validation = cms.Sequence(btlValidation + process.mtdTracksValid)
 process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
     dataset = cms.untracked.PSet(
         dataTier = cms.untracked.string('DQMIO'),
