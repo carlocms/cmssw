@@ -43,6 +43,7 @@ private:
 
   std::pair<double, double> computeMedianAndMAD(MonitorElement* me) const;
   double computeMedianErrorBootstrap(MonitorElement* me, unsigned int nResamples = 1000) const;
+  std::tuple<double, double, double> computeMeanAndStdDev(MonitorElement* me) const;
   // --- Histograms
   MonitorElement* meHitOccupancy_;
 };
@@ -151,8 +152,30 @@ double BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* m
     return std::sqrt(sum_sq_diff / (resampledMedians.size() - 1)); // standard deviation
 }
 
+//------------------------------------------------------------------------------
+
+// Function to calculate mean, standard deviation and mean error (using TH1 methods)
+std::tuple<double, double, double> BtlTimeMonitoringHarvester::computeMeanAndStdDev(MonitorElement* me) const {
+    if (!me)
+        return {0., 0., 0.};
+
+    const TH1* h = me->getTH1();
+    if (!h)
+        return {0., 0., 0.};
+
+    const double entries = h->GetEntries();
+    if (entries < 1)
+        return {0., 0., 0.};
+
+    const double mean = h->GetMean();
+    const double stddev = h->GetStdDev();
+    const double meanError = stddev / std::sqrt(entries);
+
+    return {mean, stddev, meanError};
+}
 
 
+//------------------------------------------------------------------------------------------
 
 // ------------ constructor and destructor --------------
 BtlTimeMonitoringHarvester::BtlTimeMonitoringHarvester(const edm::ParameterSet& iConfig)
@@ -177,6 +200,10 @@ void BtlTimeMonitoringHarvester::dqmEndJob(DQMStore::IBooker& ibook, DQMStore::I
 std::vector<double> medians;
 std::vector<double> mads;
 std::vector<double> medianErrors;
+std::vector<double> means;
+std::vector<double> stddevs;
+std::vector<double> meanErrors;
+
 
 const unsigned int nRU = 12; 
 for (unsigned int i = 1; i <= nRU; ++i) { 
@@ -192,20 +219,27 @@ for (unsigned int i = 1; i <= nRU; ++i) {
 
   auto [median, mad] = computeMedianAndMAD(me);
   double medianError = computeMedianErrorBootstrap(me);
-  
+  auto [mean, stddev, meanError] = computeMeanAndStdDev(me);
+
   medians.push_back(median);
   mads.push_back(mad);
   medianErrors.push_back(medianError);
+  means.push_back(mean);
+  stddevs.push_back(stddev);
+  meanErrors.push_back(meanError);
 }
 
 
 edm::LogPrint("BtlTimeMonitoringHarvester") << "------ RU Median, MAD and Median Error (bootstrap) ------";
 for (unsigned int i = 0; i < nRU; ++i) {
-  edm::LogPrint("BtlTimeMonitoringHarvester")
+edm::LogPrint("BtlTimeMonitoringHarvester")
     << "RU index " << i+1
     << " : Median = " << medians[i] << " ns, "
     << " MAD = " << mads[i] << " ns, "
-    << " Median error = " << medianErrors[i] << " ns";
+    << " Median error = " << medianErrors[i] << " ns, "
+    << " Mean = " << means[i] << " ns, "
+    << " StdDev = " << stddevs[i] << " ns, "
+    << " Mean error = " << meanErrors[i] << " ns";
 }
 edm::LogPrint("BtlTimeMonitoringHarvester") << "----------------------------------------------------------";
 
