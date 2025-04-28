@@ -33,7 +33,7 @@ process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
 
 file_list = [
         f'file:/eos/infnts/cms/store/user/cgiraldi/MuGun_Pt10to50/step3_{i}.root'
-        for i in range (1, 300)
+        for i in range (1, 100)
 ]
 
 # --- in case of condor: sys.argv[1]
