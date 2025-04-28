@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <TH1F.h>
 #include <TFile.h>
+#include <random>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/Event.h"
@@ -81,14 +82,21 @@ public:
 
 private:
   void bookHistograms(DQMStore::IBooker&, edm::Run const&, edm::EventSetup const&) override;
-
+ 
   void analyze(const edm::Event&, const edm::EventSetup&) override;
-
+ 
   bool isSameCluster(const FTLCluster&, const FTLCluster&);
-
   
-  //funzione filtro primary hit con SimTrack:
- bool isPrimaryTrack(unsigned int trackID, const std::vector<SimTrack>& simTracks, const std::vector<SimVertex>& simVerticesHandle, float& vtx_time, float& vtx_z, float& vtx_x, float& vtx_y); 
+  bool isPrimaryTrack(unsigned int trackID, const std::vector<SimTrack>& simTracks, const std::vector<SimVertex>& simVerticesHandle, float& vtx_time, float& vtx_z, float& vtx_x, float& vtx_y); 
+ 
+/*  std::pair<double, double> computeMedianAndMAD(MonitorElement* me) const;
+ // --- Vettori per salvare mediana e MAD
+  double medianRUslice_corr_[6] = {0};
+  double madRUslice_corr_[6] = {0};
+  std::vector<double> medianSMslice_corr_;
+  std::vector<double> madSMslice_corr_;
+*/
+ 
  // ------------ member data ------------
 
   const std::string folder_;
@@ -341,6 +349,7 @@ private:
 
   static constexpr int nTR_ = 36;
   static constexpr int nRU_ = 6;
+  static constexpr int nRU_tot_ = 12;
   static constexpr int nSMphi_ = 96;  
   static constexpr double calib_EneRecoHit_ = 0.03125;
   static constexpr double hitMaxTime_= 19.5;
@@ -348,6 +357,16 @@ private:
   static constexpr double hitMinimumAmplitude_ = 65.;
   static constexpr bool make_primary_filter_ = true;
   static constexpr double simUnit_ = 1e9;
+  std::vector<int> crystal_index_offset = {
+	  1*16,
+          8*16,
+          16*16,
+          14*16,
+          32*16,
+          40*16,
+          48*16,
+          56*16
+  };
 
   MonitorElement* meUncEneLVsX_;
   MonitorElement* meUncEneRVsX_;
@@ -356,16 +375,20 @@ private:
   
   MonitorElement* meUncTimeMean_;
   MonitorElement* meUncTimeMean_corr_;
-  MonitorElement* meUncTimeRUSlice_Zpos_[nRU_];
-  MonitorElement* meUncTimeRUSlice_Zpos_corr_[nRU_];
-  MonitorElement* meUncTimeRUSlice_Zneg_[nRU_];
-  MonitorElement* meUncTimeRUSlice_Zneg_corr_[nRU_];
+  MonitorElement* meUncTimeRUSlice_[nRU_tot_];
+  MonitorElement* meUncTimeRUSlice_corr_[nRU_tot_];
   MonitorElement* meUncTimeRU_Zpos_[nRU_][nTR_];
   MonitorElement* meUncTimeRU_Zpos_corr_[nRU_][nTR_];
   MonitorElement* meUncTimePhiSlice_[nSMphi_];
   MonitorElement* meUncTimePhiSlice_corr_[nSMphi_];
+  MonitorElement* meUncTimeRU_phi_[nRU_tot_];
   MonitorElement* meUncAmpl_global_;
   MonitorElement* meUncEne_global_;
+  MonitorElement* meUncTimeCorr_SM_RU_[nRU_tot_];
+  MonitorElement* meUncTime_CR_RU_[nRU_tot_];
+  MonitorElement* meUncTimeRU_zpos_;
+  MonitorElement* meUncTimeSM_z_;
+
 
   static constexpr int nBinsQ_ = 20;
   static constexpr float binWidthQ_ = 30.;
@@ -398,7 +421,7 @@ bool BtlTimeMonitoring::isPrimaryTrack(unsigned int trackID,
     for (const auto& track : simTracks) {
         if (track.trackId() == trackID) {
             
-		if (track.isPrimary() && abs(track.type()) == 22) { // primary particle and photon
+		if (track.isPrimary() && abs(track.type()) == 22) {
 
                 int vtxIdx = track.vertIndex();
 		const auto& simVertex = simVerticesHandle[vtxIdx];
@@ -503,6 +526,121 @@ bool BtlTimeMonitoring::isPrimaryTrack(unsigned int trackID,
 }
 
 
+/*
+std::pair<double, double> BtlTimeMonitoring::computeMedianAndMAD(MonitorElement* me) const {
+    if (!me)
+        return {0., 0.};
+
+    const TH1* h = me->getTH1();
+    if (!h)
+        return {0., 0.};
+
+    std::vector<double> values;
+    int nbins = h->GetNbinsX();
+
+    for (int i = 1; i <= nbins; ++i) {
+        double binContent = h->GetBinContent(i);
+        for (int j = 0; j < static_cast<int>(binContent); ++j) {
+            values.push_back(h->GetBinCenter(i));
+        }
+    }
+
+    if (values.empty())
+        return {0., 0.};
+
+    std::sort(values.begin(), values.end());
+
+    // Mediana
+    double median = 0.;
+    size_t n = values.size();
+    if (n % 2 == 0) {
+        median = 0.5 * (values[n/2 - 1] + values[n/2]);
+    } else {
+        median = values[n/2];
+    }
+
+    // Calcolo MAD (Median Absolute Deviation)
+    std::vector<double> deviations;
+    for (const auto& val : values) {
+        deviations.push_back(std::abs(val - median));
+    }
+    std::sort(deviations.begin(), deviations.end());
+
+    double mad = 0.;
+    if (n % 2 == 0) {
+        mad = 0.5 * (deviations[n/2 - 1] + deviations[n/2]);
+    } else {
+        mad = deviations[n/2];
+    }
+
+    return {median, mad};
+}
+*/
+
+
+
+/*
+double BtlTimeMonitoring::bootstrapMedianError(TH1* histo, int nSamples = 1000) {
+  std::vector<double> values;
+
+  // Ricostruisci la lista degli entry dell'histogramma
+  for (int i = 1; i <= histo->GetNbinsX(); ++i) {
+    int entries = static_cast<int>(histo->GetBinContent(i));
+    double x = histo->GetBinCenter(i);
+    for (int j = 0; j < entries; ++j) {
+      values.push_back(x);
+    }
+  }
+
+  if (values.size() < 2) {
+    return 0.0; // errore nullo se troppo pochi dati
+  }
+
+  // Imposta un random generator
+  std::mt19937 rng(42); // Seed fisso per reproducibilità (oppure std::random_device rd; std::mt19937 rng(rd()); per random puro)
+  std::uniform_int_distribution<> dist(0, values.size() - 1);
+
+  // Vettore per salvare le mediane dei resampling
+  std::vector<double> bootstrap_medians;
+  bootstrap_medians.reserve(nSamples);
+
+  // Loop su nSamples per il bootstrap
+  for (int i = 0; i < nSamples; ++i) {
+    std::vector<double> resampled;
+    resampled.reserve(values.size());
+    for (size_t j = 0; j < values.size(); ++j) {
+      resampled.push_back(values[dist(rng)]);
+    }
+
+    // Calcolo della mediana sul sample bootstrappato
+    std::sort(resampled.begin(), resampled.end());
+    double median;
+    size_t n = resampled.size();
+    if (n % 2 == 0) {
+      median = 0.5 * (resampled[n/2 - 1] + resampled[n/2]);
+    } else {
+      median = resampled[n/2];
+    }
+    bootstrap_medians.push_back(median);
+  }
+
+  // Calcolo della deviazione standard delle mediane
+  double mean = 0.;
+  for (const auto& m : bootstrap_medians) {
+    mean += m;
+  }
+  mean /= bootstrap_medians.size();
+
+  double variance = 0.;
+  for (const auto& m : bootstrap_medians) {
+    variance += (m - mean) * (m - mean);
+  }
+  variance /= bootstrap_medians.size();
+
+  return std::sqrt(variance); // Errore sulla mediana
+}
+
+*/
 
 
 // ------------ constructor and destructor --------------
@@ -1260,11 +1398,11 @@ if(Delta_TOF_vtx_sm!=0) {
 
 
       // --- Skip UncalibratedRecHits not matched to SimHits
-      if (m_btlSimHits.count(detId.rawId()) != 1)
-        continue;
+      //if (m_btlSimHits.count(detId.rawId()) != 1)
+      //  continue;
 
       
-// --- Combine the information from the left and right BTL cell sides
+      //Combine the information from the left and right BTL cell sides
       float nHits = 0.;
       float hit_amplitude = 0.;
       float hit_time = 0.;
@@ -1320,7 +1458,9 @@ if(Delta_TOF_vtx_sm!=0) {
 
 
       //Distance beam spot<-> crystal:
-      float DistUnc_BS = std::sqrt(std::pow(global_point.x() - beamSpot.x0(), 2) + std::pow(global_point.y() - beamSpot.y0(), 2) + std::pow(global_point.z() - beamSpot.z0(), 2));
+      float DistUnc_BS = std::sqrt(std::pow(global_point.x() - beamSpot.x0(), 2) + 
+		                   std::pow(global_point.y() - beamSpot.y0(), 2) + 
+		                   std::pow(global_point.z() - beamSpot.z0(), 2));
       constexpr float c_cm_ns = geant_units::operators::convertMmToCm(CLHEP::c_light);  // [mm/ns] -> [cm/ns]
       
       //TOF photon-like:
@@ -1328,7 +1468,6 @@ if(Delta_TOF_vtx_sm!=0) {
 
       //Hit Time-Stamp correction:
       float hit_time_corr = hit_time - TOFUnc_BS;
-
 
       //Global plots:
       meUncTimeMean_->Fill(hit_time);
@@ -1338,52 +1477,56 @@ if(Delta_TOF_vtx_sm!=0) {
 
       //Sensor Module Index extrapolation:
       auto index = topology->btlIndex(geoId.rawId());
-      //uint32_t phi_index = index.first;
-      uint32_t eta_index = index.second;
-      
+      //uint32_t SMphi_index = index.first;
+      uint32_t SMeta_index = index.second;
+
+      int RU_index = detId.globalRunit() + detId.mtdSide()*6; //RU idex in both the side wrt z 
+      //int crystal_index = detId.crystal() + (SMeta_index-1)*16;
       
       //Fill histograms for each SM slice:
-      meUncTimePhiSlice_[eta_index-1]->Fill(hit_time);
-      meUncTimePhiSlice_corr_[eta_index-1]->Fill(hit_time_corr);
+      meUncTimePhiSlice_[SMeta_index-1]->Fill(hit_time);
+      meUncTimePhiSlice_corr_[SMeta_index-1]->Fill(hit_time_corr);
 
-      
-      /*
-      if (eta_index == 72) { 
-      std::cout<< " TRAY: " << detId.mtdRR() << " | RU: " << detId.globalRunit() << " | SM ETA: " << eta_index << " | SM PHI: " << phi_index << " | CRYSTAL: " << detId.crystal() << std::endl;
-      std::cout << " GLOBAL POINT -- x: " << global_point.x() << " | y: " << global_point.y() << " | z: " << global_point.z() << std::endl;
+    
+
+      //Histo per single RU inside the same slice (z>0):
+      if(detId.mtdSide() == 1) {
+	      meUncTimeRU_Zpos_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time); 
+	      meUncTimeRU_Zpos_corr_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time_corr);		
       }
+	
+      //Histo per fixed RU slice:  		
+      meUncTimeRUSlice_[RU_index-1]->Fill(hit_time); 
+      meUncTimeRUSlice_corr_[RU_index-1]->Fill(hit_time_corr);	
 
+      //Profile per single RU around Phi in each RU slice:	
+      meUncTimeRU_phi_[RU_index-1]->Fill(detId.mtdRR(),hit_time_corr);
+
+      //Profile per single RU slice along eta:
+      meUncTimeRU_zpos_->Fill(RU_index,hit_time_corr);
+	
+      //Profile per single SM slice along eta:
+      meUncTimeSM_z_->Fill(SMeta_index,hit_time_corr);
+
+      //Profile per single CR slice in each RU slice:
+      int adjusted_crystal_index = detId.crystal() + (SMeta_index - 1) * 16 - crystal_index_offset[RU_index - 1];
+      meUncTime_CR_RU_[RU_index - 1]->Fill(adjusted_crystal_index, hit_time_corr);
       
-      //Cut for the corrected Time for RU slice:
-      if ((detId.globalRunit() == 1 && hit_time_corr > 8.) || (detId.globalRunit() >= 2 && detId.globalRunit() <= 6 && hit_time_corr > 6.)) {  
-	      continue;  
-      }
+      
+      //Profile per single SM slice in each RU slice (z>0):
+      int adjusted_SMeta_index =SMeta_index - (RU_index-1)*8;
+      meUncTimeCorr_SM_RU_[RU_index - 1] ->Fill(adjusted_SMeta_index, hit_time_corr);
+		
 
-      //Single crystal selection:	
-	if(eta_index==31) {
-		std::cout << " valore SM slice index: " << eta_index << " valore crystal idenx: " << detId.crystal() << std::endl;
-	}
+	/*
+      std::cout << "=====================================" << std::endl;
+      std::cout << " TRAY: " << detId.mtdRR()
+                << " | RU: " << detId.globalRunit()
+                << " | SM ETA: " << SMeta_index
+                << " | SM PHI: " << SMphi_index
+                << " | CRYSTAL: " << detId.crystal()
+                << std::endl;
       */
-
-
-	//Histo per fixed RU slice (z>0):
-	if(detId.mtdSide() == 1) {
-                 meUncTimeRUSlice_Zpos_[detId.globalRunit()-1]->Fill(hit_time);
-		 meUncTimeRUSlice_Zpos_corr_[detId.globalRunit()-1]->Fill(hit_time_corr);
-
-	//Histo per single RU inside the same slice (z>0):      
-	       meUncTimeRU_Zpos_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time);
-	       meUncTimeRU_Zpos_corr_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time_corr);	
-	}
-	
-
-	//Histo per fixed RU slice (z<0):
-        if(detId.mtdSide() == 0) {
-  		meUncTimeRUSlice_Zneg_[detId.globalRunit()-1]->Fill(hit_time);
-                meUncTimeRUSlice_Zneg_corr_[detId.globalRunit()-1]->Fill(hit_time_corr);
-	}
-
-	
 
 //-----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1458,10 +1601,10 @@ std::ofstream MedianErrFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0
 std::ofstream RMSFile_1("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/RMS_RU_slice_pos_corr.txt");
 
 
-for (int slice = 0; slice < nRU_; ++slice) {
-    if (!meUncTimeRUSlice_Zpos_corr_[slice]) continue;
+for (int slice = 0; slice < nRU_tot_; ++slice) {
+    if (!meUncTimeRUSlice_corr_[slice]) continue;
 
-    TH1F* hist_1 = meUncTimeRUSlice_Zpos_corr_[slice]->getTH1F();
+    TH1F* hist_1 = meUncTimeRUSlice_corr_[slice]->getTH1F();
 
     if (hist_1->GetEntries() > 0) {
     // Media e deviazione standard direttamente dall'istogramma
@@ -1509,68 +1652,6 @@ TrMeanErrFile_1.close();
 MedianFile_1.close();
 MedianErrFile_1.close();
 RMSFile_1.close();
-
-//---------------------------------------------------------------------------------------------
-std::ofstream TrMeanFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Mean_RU_slice_neg_corr.txt");
-std::ofstream stdDevFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/STD_RU_slice_neg_corr.txt");
-std::ofstream ModaFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Moda_RU_slice_neg_corr.txt");
-std::ofstream TrMeanErrFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Mean_Error_RU_slice_neg_corr.txt");
-std::ofstream MedianFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Median_RU_slice_neg_corr.txt");
-std::ofstream MedianErrFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/Median_Error_RU_slice_neg_corr.txt");
-std::ofstream RMSFile("/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/test_1/RMS_RU_slice_neg_corr.txt");
-
-for (int slice = 0; slice < nRU_; ++slice) {
-    if (!meUncTimeRUSlice_Zneg_corr_[slice]) continue;
-
-    TH1F* hist = meUncTimeRUSlice_Zneg_corr_[slice]->getTH1F();
-
-    if (hist->GetEntries() > 0) {
-    // Media e deviazione standard direttamente dall'istogramma
-    double mean = hist->GetMean();
-    double stdDev = hist->GetStdDev();
-    double meanError = hist->GetMeanError();
-    double stdDevError = hist->GetStdDevError();
-    double RMS = hist->GetRMS();
-
-    // Moda
-    int binWithMax = hist->GetMaximumBin();
-    double mode = hist->GetBinCenter(binWithMax);
-    double modeError = hist->GetBinWidth(binWithMax) / sqrt(12.0);
-    
-    // Median
-    double median = 0;
-    double q = 0.5;
-    hist->GetQuantiles(1, &median, &q);
-
-    // Median Error: 1.2533 * sigma / sqrt(N)
-    double N = hist->GetEntries();
-    double medianError = (N > 0) ? (1.2533 * stdDev / sqrt(N)) : 0.0;
-    
-
-    // Output dei risultati nei file
-    TrMeanFile << slice << "\t" << mean << "\t" << meanError << "\n";
-    stdDevFile << slice << "\t" << stdDev << "\t" << stdDevError <<"\n";
-    ModaFile << slice << "\t" << mode << "\t" << modeError << "\n";
-    TrMeanErrFile << slice << "\t" << meanError << "\n";
-    MedianFile << slice << "\t" << median << "\t" << medianError << "\n";
-    MedianErrFile << slice << "\t" << medianError << "\n";
-    RMSFile << slice << "\t" << RMS << "\n";
-
-    // salvataggio istogramma
-       // std::string filename = "/gfsvol01/cms/users/giraldin/calib_new/CMSSW_15_0_0_pre2/work/plot/Hist_RU_slice_Zneg_" + std::to_string(slice) + ".root";
-        //TFile outFile(filename.c_str(), "RECREATE");
-        //hist->Write();
-        //outFile.Close();
-    }
-}
-TrMeanFile.close();
-stdDevFile.close();
-ModaFile.close();
-TrMeanErrFile.close();
-MedianFile.close();
-MedianErrFile.close();
-RMSFile.close();
-
 
 //---------------------------------------------------------------------------------------------
 
@@ -1640,8 +1721,33 @@ RMSFile_sm.close();
 
 
 //-----------------------------------------------------------------------------------------------------------
+/*
+for (int i = 0; i < nRU_tot_; ++i) {
+        if (meUncTimeRUSlice_corr_[i]->getEntries()==0)
+            continue;
+
+        auto [median, mad] = computeMedianAndMAD(meUncTimeRUSlice_corr_[i]);
+        medianRUslice_corr_[i] = median;
+        madRUslice_corr_[i] = mad;
+	std::cout << "Mediana RU slice "<< i << " :" << median << endl;
+        std::cout << "MADa RU slice "<< i << " :" << mad << endl;	
+
+    }
+
+for (int i = 0; i < nSMphi_; ++i) {
+        if (meUncTimePhiSlice_corr_[i]->getEntries()==0)
+            continue;
+
+        auto [median, mad] = computeMedianAndMAD(meUncTimePhiSlice_corr_[i]);
+        medianSMslice_corr_[i] = median;
+        madSMslice_corr_[i] = mad;
+
+    }
+*/
 
 }//analyzer()
+
+//---------------------------------------------------------------------------------
 
 
 
@@ -2374,29 +2480,16 @@ void BtlTimeMonitoring::bookHistograms(DQMStore::IBooker& ibook,
   meUncEne_global_ = ibook.book1D("BtlUncEne_global", "Hit Energy;Hit Energy [MeV];Entries", 150, -10., 30.);
 
 
-  for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
-            std::string name = "BtlUncTimeRUSlice_Zpos_" + std::to_string(ihistoRU + 1);
-            std::string title = "Mean Time of Uncalibrated RECO Hits z>0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
-            meUncTimeRUSlice_Zpos_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time of Uncalibrated RECO Hits (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
+            meUncTimeRUSlice_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
     }
 
-   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
-            std::string name = "BtlUncTimeRUSlice_Zpos_corr_" + std::to_string(ihistoRU + 1);
-            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits z>0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries";
-            meUncTimeRUSlice_Zpos_corr_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
-    }
-
-
-   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
-            std::string name = "BtlUncTimeRUSlice_Zneg_" + std::to_string(ihistoRU + 1);
-            std::string title = "Mean Time of Uncalibrated RECO Hits z<0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
-            meUncTimeRUSlice_Zneg_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
-    }
-
-   for(unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
-            std::string name = "BtlUncTimeRUSlice_Zneg_corr_" + std::to_string(ihistoRU + 1);
-            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits z<0 (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
-            meUncTimeRUSlice_Zneg_corr_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
+            std::string name = "BtlUncTimeRUSlice_corr_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time with TOF correction of Uncalibrated RECO Hits (RU " + std::to_string(ihistoRU + 1) + ");Time [ns];Entries/30ps";
+            meUncTimeRUSlice_corr_[ihistoRU] = ibook.book1D(name, title, 1000, -5., 25.);
     }
 
 
@@ -2416,25 +2509,94 @@ void BtlTimeMonitoring::bookHistograms(DQMStore::IBooker& ibook,
 
         meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); // X-axis
         meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2);    // Y-axis
+   
     }
-}
 
-//da sistemare:
-for (uint32_t i = 0; i < nSMphi_; ++i) {
-  meUncTimePhiSlice_[i] = ibook.book1D(
-      Form("meUncTimePhiSlice_%d", i),
-      Form("BTL Hit Time Distribution for Phi Slice %d", i),
-     1000, -5., 25.);
-  meUncTimePhiSlice_[i]->setAxisTitle("Time [ns]", 1);
-  meUncTimePhiSlice_[i]->setAxisTitle("Entries/30ps", 2);  
+   }
 
-  meUncTimePhiSlice_corr_[i] = ibook.book1D(
-      Form("meUncTimePhiSlice_corr_%d", i),
-      Form("Corrected BTL Hit Time Distribution for Phi Slice %d", i),
-      1000, -5., 25.);
-  meUncTimePhiSlice_corr_[i]->setAxisTitle("Time [ns]", 1); 
-  meUncTimePhiSlice_corr_[i]->setAxisTitle("Entries/30ps", 2); 
-}
+
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
+           std::string name = "BTLmeUncTimeRU_phi_" + std::to_string(ihistoRU + 1);
+            std::string title = "Mean Time per single RU inside of each slice in RU z<0 (RU " + std::to_string(ihistoRU + 1) + "); Tray Index ;<Time corrected>";
+
+            meUncTimeRU_phi_[ihistoRU] = ibook.bookProfile(name, title,
+                                      36,
+                                      0.5,
+                                      36.5,
+                                      -10.,
+                                      20.,
+                                      "S");
+   }
+
+   for (uint32_t i = 0; i < nSMphi_; ++i) {
+
+      	meUncTimePhiSlice_[i] = ibook.book1D(
+			Form("meUncTimePhiSlice_%d", i),
+			Form("BTL Hit Time Distribution for Phi Slice %d", i),
+			1000, -5., 25.);
+	meUncTimePhiSlice_[i]->setAxisTitle("Time [ns]", 1);
+        meUncTimePhiSlice_[i]->setAxisTitle("Entries/30ps", 2);  
+
+	meUncTimePhiSlice_corr_[i] = ibook.book1D(
+			Form("meUncTimePhiSlice_corr_%d", i),
+			Form("Corrected BTL Hit Time Distribution for Phi Slice %d", i),
+			1000, -5., 25.);
+	meUncTimePhiSlice_corr_[i]->setAxisTitle("Time [ns]", 1);
+	meUncTimePhiSlice_corr_[i]->setAxisTitle("Entries/30ps", 2); 
+   }
+
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
+           std::string name = "BTLUncTimeCorr_SM_RU" + std::to_string(ihistoRU + 1);
+           std::string title = "Mean Time per single SMl slice inside of each RU slice (RU " + std::to_string(ihistoRU + 1) + ");SM Index ;<Time corrected>";
+
+           meUncTimeCorr_SM_RU_[ihistoRU] = ibook.bookProfile(name, title,
+                                      8,
+                                      0.5,
+                                      8.5,
+                                      -10.,
+                                      20.,
+                                      "S");
+   }
+
+
+
+   for(unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
+	   std::string name = "BTLUncTime_CR_RU_" + std::to_string(ihistoRU + 1);
+	   std::string title = "Mean Time per single crystal slice inside of each RU slice (RU " + std::to_string(ihistoRU + 1) + ");Crystal Index ;<Time corrected>";
+ 
+	   meUncTime_CR_RU_[ihistoRU] = ibook.bookProfile(name, title,
+                                      128,
+                                      0.5,
+                                      128.5,
+                                      -10.,
+                                      20.,
+                                      "S");
+   }
+
+
+
+
+   meUncTimeRU_zpos_ = ibook.bookProfile("BTLUncTimeRU_zpos_",
+                                      "BTL uncalibrated hit corrected time per RU slice (z>0) - average; RU Index; <Time> [ns]",
+                                      12,
+                                      0.5,
+                                      12.5,
+                                      -10.,
+                                      20.,
+                                      "S");
+
+
+   meUncTimeSM_z_ = ibook.bookProfile("BTLUncTimeSM_z_",
+                                      "BTL uncalibrated hit corrected time per SM slice - average; SM Index; <Time> [ns]",
+                                      96,
+                                      0.5,
+                                      96.5,
+                                      -10.,
+                                      20.,
+                                      "S");
+
 
 
   if (optionalPlots_) {
@@ -2505,6 +2667,8 @@ for (uint32_t i = 0; i < nSMphi_; ++i) {
     }
   }
 }
+
+
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void BtlTimeMonitoring::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {

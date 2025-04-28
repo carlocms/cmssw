@@ -21,7 +21,7 @@ process.load("Configuration.StandardSequences.Reconstruction_cff")
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 #Setup FWK for multithreaded
-process.options.numberOfThreads = 1
+process.options.numberOfThreads = 4
 process.options.numberOfStreams = 0
 process.options.numberOfConcurrentLuminosityBlocks = 0
 process.options.eventSetup.numberOfConcurrentIOVs = 1
@@ -32,7 +32,7 @@ process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
 
 
 file_list = [
-        f'file:/eos/infnts/cms/store/user/cgiraldi/SingleGamma_FlatEne_low_energy/step3_{i}.root'
+        f'file:/eos/infnts/cms/store/user/cgiraldi/MuGun_Pt10to50/step3_{i}.root'
         for i in range (1, 300)
 ]
 
