@@ -15,6 +15,8 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <random>
+#include <numeric>
 
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -40,6 +42,7 @@ private:
   const std::string folder_;
 
   std::pair<double, double> computeMedianAndMAD(MonitorElement* me) const;
+  double computeMedianErrorBootstrap(MonitorElement* me, unsigned int nResamples = 1000) const;
   // --- Histograms
   MonitorElement* meHitOccupancy_;
 };
@@ -69,7 +72,7 @@ std::pair<double, double> BtlTimeMonitoringHarvester::computeMedianAndMAD(Monito
 
     std::sort(values.begin(), values.end());
 
-    // Mediana
+    // Median
     double median = 0.;
     size_t n = values.size();
     if (n % 2 == 0) {
@@ -78,7 +81,7 @@ std::pair<double, double> BtlTimeMonitoringHarvester::computeMedianAndMAD(Monito
         median = values[n/2];
     }
 
-    // Calcolo MAD (Median Absolute Deviation)
+    // MAD (Median Absolute Deviation)
     std::vector<double> deviations;
     for (const auto& val : values) {
         deviations.push_back(std::abs(val - median));
@@ -96,7 +99,57 @@ std::pair<double, double> BtlTimeMonitoringHarvester::computeMedianAndMAD(Monito
 }
 
 
-//__-------------------------------------
+//-------------------------------------
+
+
+// Functin to calculate the median uncertainty via bootstrap
+double BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* me, unsigned int nResamples) const {
+    if (!me)
+        return 0.;
+
+    const TH1* h = me->getTH1();
+    if (!h)
+        return 0.;
+
+    std::vector<double> values;
+    int nbins = h->GetNbinsX();
+
+    for (int i = 1; i <= nbins; ++i) {
+        double binContent = h->GetBinContent(i);
+        for (int j = 0; j < static_cast<int>(binContent); ++j) {
+            values.push_back(h->GetBinCenter(i));
+        }
+    }
+
+    if (values.size() < 2)
+        return 0.;
+
+    std::vector<double> resampledMedians;
+    std::mt19937 rng(12345); 
+    std::uniform_int_distribution<size_t> dist(0, values.size() - 1);
+
+    for (unsigned int resample = 0; resample < nResamples; ++resample) {
+        std::vector<double> sample;
+        sample.reserve(values.size());
+        for (size_t i = 0; i < values.size(); ++i) {
+            sample.push_back(values[dist(rng)]);
+        }
+        std::sort(sample.begin(), sample.end());
+        double med = (sample.size() % 2 == 0)
+                         ? 0.5 * (sample[sample.size()/2 - 1] + sample[sample.size()/2])
+                         : sample[sample.size()/2];
+        resampledMedians.push_back(med);
+    }
+
+    // Std of the resampled median
+    double mean = std::accumulate(resampledMedians.begin(), resampledMedians.end(), 0.0) / resampledMedians.size();
+    double sum_sq_diff = 0.;
+    for (const auto& med : resampledMedians) {
+        sum_sq_diff += (med - mean) * (med - mean);
+    }
+
+    return std::sqrt(sum_sq_diff / (resampledMedians.size() - 1)); // standard deviation
+}
 
 
 
@@ -121,16 +174,12 @@ void BtlTimeMonitoringHarvester::dqmEndJob(DQMStore::IBooker& ibook, DQMStore::I
 
 //-------------------------------------------------------------------
 
-
-
-// Vettori dove salviamo i valori di mediana e MAD
 std::vector<double> medians;
 std::vector<double> mads;
+std::vector<double> medianErrors;
 
-// Supponiamo che i tuoi histogrammi si chiamino "UncTimeRUSlice_corr_XX" dove XX è l'indice
-
-const unsigned int nRU = 12; // oppure il numero corretto
-for (unsigned int i = 1; i <= nRU; ++i) {  // attenzione <=
+const unsigned int nRU = 12; 
+for (unsigned int i = 1; i <= nRU; ++i) { 
   std::string histoname = folder_ + "BtlUncTimeRUSlice_corr_" + std::to_string(i);
 
   MonitorElement* me = igetter.get(histoname);
@@ -142,33 +191,24 @@ for (unsigned int i = 1; i <= nRU; ++i) {  // attenzione <=
   }
 
   auto [median, mad] = computeMedianAndMAD(me);
+  double medianError = computeMedianErrorBootstrap(me);
+  
   medians.push_back(median);
   mads.push_back(mad);
+  medianErrors.push_back(medianError);
 }
 
 
-
-edm::LogPrint("BtlTimeMonitoringHarvester") << "------ RU Median and MAD values ------";
-for (unsigned int i = 0; i < nRU-1; ++i) {
+edm::LogPrint("BtlTimeMonitoringHarvester") << "------ RU Median, MAD and Median Error (bootstrap) ------";
+for (unsigned int i = 0; i < nRU; ++i) {
   edm::LogPrint("BtlTimeMonitoringHarvester")
     << "RU index " << i+1
-    << " : Median = " << medians[i] << " ns, MAD = " << mads[i] << " ns";
+    << " : Median = " << medians[i] << " ns, "
+    << " MAD = " << mads[i] << " ns, "
+    << " Median error = " << medianErrors[i] << " ns";
 }
-edm::LogPrint("BtlTimeMonitoringHarvester") << "--------------------------------------";
+edm::LogPrint("BtlTimeMonitoringHarvester") << "----------------------------------------------------------";
 
-
-
-/*
-// Bookiamo i TProfile
-ibook.cd(folder_);
-
-auto meMedianProfile = ibook.bookProfile("BtlMedianProfile", "Mediana dei tempi per RU;Indice RU;Mediana [ns]", nRU, 0, nRU, -5., 5.);
-auto meMADProfile = ibook.bookProfile("BtlMADProfile", "MAD dei tempi per RU;Indice RU;MAD [ns]", nRU, 0, nRU, 0., 2.);
-for (unsigned int i = 0; i < nRU; ++i) {
-  meMedianProfile->Fill(i, medians[i]);
-  meMADProfile->Fill(i, mads[i]);
-}
-*/
 //-------------------------------------------------------------------
 
 
