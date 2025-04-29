@@ -43,7 +43,7 @@ private:
   const std::string folder_;
 
   std::pair<double, double> computeMedianAndMAD(MonitorElement* me) const;
-  double computeMedianErrorBootstrap(MonitorElement* me, unsigned int nResamples = 1000) const;
+  std::pair<double, double> computeMedianErrorBootstrap(MonitorElement* me, unsigned int nResamples = 1000) const;
   std::tuple<double, double, double> computeMeanAndStdDev(MonitorElement* me) const;
   // --- Histograms
   MonitorElement* meHitOccupancy_;
@@ -109,13 +109,13 @@ std::pair<double, double> BtlTimeMonitoringHarvester::computeMedianAndMAD(Monito
 
     for (int i = minBin; i <= maxBin; ++i) {
 */
-double BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* me, unsigned int nResamples) const {
+std::pair<double, double> BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* me, unsigned int nResamples) const {
     if (!me)
-        return 0.;
+        return {0., 0.};
 
     const TH1* h = me->getTH1();
     if (!h)
-        return 0.;
+        return {0., 0.};
 
     std::vector<double> values;
     const int nbins = h->GetNbinsX();
@@ -127,7 +127,7 @@ double BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* m
     }
 
     if (values.size() < 2)
-        return 0.;
+        return {0., 0.};
 
     std::vector<double> resampledMedians;
     resampledMedians.reserve(nResamples); 
@@ -147,6 +147,7 @@ double BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* m
         resampledMedians.push_back(median);
     }
 
+    // Calcolo della deviazione standard della distribuzione delle mediane
     const double mean = std::accumulate(resampledMedians.begin(), resampledMedians.end(), 0.0) / resampledMedians.size();
 
     double sum_sq_diff = 0.;
@@ -154,7 +155,12 @@ double BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* m
         sum_sq_diff += (med - mean) * (med - mean);
     }
 
-    return std::sqrt(sum_sq_diff / (resampledMedians.size() - 1));
+    const double stddev = std::sqrt(sum_sq_diff / (resampledMedians.size() - 1));
+
+    // Calcolo dell'errore sulla stima della deviazione standard (standard error of stddev)
+    const double stddevError = stddev / std::sqrt(2. * (resampledMedians.size() - 1));
+
+    return {stddev, stddevError};
 }
 
 //------------------------------------------------------------------------------
@@ -205,6 +211,7 @@ void BtlTimeMonitoringHarvester::dqmEndJob(DQMStore::IBooker& ibook, DQMStore::I
 std::vector<double> medians;
 std::vector<double> mads;
 std::vector<double> medianErrors;
+std::vector<double> medianErrorUncertainties;
 std::vector<double> means;
 std::vector<double> stddevs;
 std::vector<double> meanErrors;
@@ -223,12 +230,13 @@ for (unsigned int i = 1; i <= nRU; ++i) {
   }
 
   auto [median, mad] = computeMedianAndMAD(me);
-  double medianError = computeMedianErrorBootstrap(me);
+  auto [medianError, medianErrorUncertainty] = computeMedianErrorBootstrap(me);
   auto [mean, stddev, meanError] = computeMeanAndStdDev(me);
 
   medians.push_back(median);
   mads.push_back(mad);
   medianErrors.push_back(medianError);
+  medianErrorUncertainties.push_back(medianErrorUncertainty);
   means.push_back(mean);
   stddevs.push_back(stddev);
   meanErrors.push_back(meanError);
@@ -242,6 +250,7 @@ edm::LogPrint("BtlTimeMonitoringHarvester")
     << " : Median = " << medians[i] << " ns, "
     << " MAD = " << mads[i] << " ns, "
     << " Median error = " << medianErrors[i] << " ns, "
+    << " Median Error Uncertainty = " << medianErrorUncertainties[i] << " ns, "
     << " Mean = " << means[i] << " ns, "
     << " StdDev = " << stddevs[i] << " ns, "
     << " Mean error = " << meanErrors[i] << " ns";
