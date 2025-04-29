@@ -17,6 +17,7 @@
 #include <cmath>
 #include <random>
 #include <numeric>
+#include "TMath.h"
 
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -103,7 +104,11 @@ std::pair<double, double> BtlTimeMonitoringHarvester::computeMedianAndMAD(Monito
 //-------------------------------------
 
 
-// Functin to calculate the median uncertainty via bootstrap
+/*minBin = std::max(1, minBin);
+    maxBin = std::min(nbins, maxBin);
+
+    for (int i = minBin; i <= maxBin; ++i) {
+*/
 double BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* me, unsigned int nResamples) const {
     if (!me)
         return 0.;
@@ -113,43 +118,43 @@ double BtlTimeMonitoringHarvester::computeMedianErrorBootstrap(MonitorElement* m
         return 0.;
 
     std::vector<double> values;
-    int nbins = h->GetNbinsX();
+    const int nbins = h->GetNbinsX();
 
     for (int i = 1; i <= nbins; ++i) {
-        double binContent = h->GetBinContent(i);
-        for (int j = 0; j < static_cast<int>(binContent); ++j) {
-            values.push_back(h->GetBinCenter(i));
-        }
+        const double binContent = h->GetBinContent(i);
+        const double binCenter = h->GetBinCenter(i);
+        values.insert(values.end(), static_cast<int>(binContent), binCenter);
     }
 
     if (values.size() < 2)
         return 0.;
 
     std::vector<double> resampledMedians;
+    resampledMedians.reserve(nResamples); 
+
     std::mt19937 rng(12345); 
     std::uniform_int_distribution<size_t> dist(0, values.size() - 1);
 
     for (unsigned int resample = 0; resample < nResamples; ++resample) {
         std::vector<double> sample;
         sample.reserve(values.size());
+
         for (size_t i = 0; i < values.size(); ++i) {
             sample.push_back(values[dist(rng)]);
         }
-        std::sort(sample.begin(), sample.end());
-        double med = (sample.size() % 2 == 0)
-                         ? 0.5 * (sample[sample.size()/2 - 1] + sample[sample.size()/2])
-                         : sample[sample.size()/2];
-        resampledMedians.push_back(med);
+
+        const double median = TMath::Median(sample.size(), sample.data());
+        resampledMedians.push_back(median);
     }
 
-    // Std of the resampled median
-    double mean = std::accumulate(resampledMedians.begin(), resampledMedians.end(), 0.0) / resampledMedians.size();
+    const double mean = std::accumulate(resampledMedians.begin(), resampledMedians.end(), 0.0) / resampledMedians.size();
+
     double sum_sq_diff = 0.;
     for (const auto& med : resampledMedians) {
         sum_sq_diff += (med - mean) * (med - mean);
     }
 
-    return std::sqrt(sum_sq_diff / (resampledMedians.size() - 1)); // standard deviation
+    return std::sqrt(sum_sq_diff / (resampledMedians.size() - 1));
 }
 
 //------------------------------------------------------------------------------
