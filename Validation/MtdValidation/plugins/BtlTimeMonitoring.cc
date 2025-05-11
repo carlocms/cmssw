@@ -89,13 +89,6 @@ private:
   
   bool isPrimaryTrack(unsigned int trackID, const std::vector<SimTrack>& simTracks, const std::vector<SimVertex>& simVerticesHandle, float& vtx_time, float& vtx_z, float& vtx_x, float& vtx_y); 
  
-/*  std::pair<double, double> computeMedianAndMAD(MonitorElement* me) const;
- // --- Vettori per salvare mediana e MAD
-  double medianRUslice_corr_[6] = {0};
-  double madRUslice_corr_[6] = {0};
-  std::vector<double> medianSMslice_corr_;
-  std::vector<double> madSMslice_corr_;
-*/
  
  // ------------ member data ------------
 
@@ -349,13 +342,15 @@ private:
 
   static constexpr int nTR_ = 36;
   static constexpr int nRU_ = 6;
+  static constexpr int nSM_ = 8;
+  static constexpr int nCR_ = 128;
   static constexpr int nRU_tot_ = 12;
   static constexpr int nSMphi_ = 96;  
   static constexpr double calib_EneRecoHit_ = 0.03125;
   static constexpr double hitMaxTime_= 19.5;
   static constexpr double hitMaxAmplitude_= 450.;
   static constexpr double hitMinimumAmplitude_ = 65.;
-  static constexpr bool make_primary_filter_ = true;
+  static constexpr bool make_primary_filter_ = false;
   static constexpr double simUnit_ = 1e9;
   std::vector<int> crystal_index_offset = {
 	  1*16,
@@ -377,10 +372,8 @@ private:
   MonitorElement* meUncTimeMean_corr_;
   MonitorElement* meUncTimeRUSlice_[nRU_tot_];
   MonitorElement* meUncTimeRUSlice_corr_[nRU_tot_];
-  MonitorElement* meUncTimeRU_Zpos_[nRU_][nTR_];
-  MonitorElement* meUncTimeRU_Zpos_corr_[nRU_][nTR_];
+  MonitorElement* meUncTime_SingleRU_Phi_[nRU_tot_][nTR_];
   MonitorElement* meUncTimePhiSlice_[nSMphi_];
-  MonitorElement* meUncTimePhiSlice_corr_[nSMphi_];
   MonitorElement* meUncTimeRU_phi_[nRU_tot_];
   MonitorElement* meUncAmpl_global_;
   MonitorElement* meUncEne_global_;
@@ -388,7 +381,10 @@ private:
   MonitorElement* meUncTime_CR_RU_[nRU_tot_];
   MonitorElement* meUncTimeRU_zpos_;
   MonitorElement* meUncTimeSM_z_;
-
+  
+  MonitorElement* meUncTimeRU_SM_[nRU_tot_][nSM_];
+  
+  //MonitorElement* meUncTimeRU_CR_[nRU_tot_][nCR_];
 
   static constexpr int nBinsQ_ = 20;
   static constexpr float binWidthQ_ = 30.;
@@ -526,123 +522,6 @@ bool BtlTimeMonitoring::isPrimaryTrack(unsigned int trackID,
 }
 
 
-/*
-std::pair<double, double> BtlTimeMonitoring::computeMedianAndMAD(MonitorElement* me) const {
-    if (!me)
-        return {0., 0.};
-
-    const TH1* h = me->getTH1();
-    if (!h)
-        return {0., 0.};
-
-    std::vector<double> values;
-    int nbins = h->GetNbinsX();
-
-    for (int i = 1; i <= nbins; ++i) {
-        double binContent = h->GetBinContent(i);
-        for (int j = 0; j < static_cast<int>(binContent); ++j) {
-            values.push_back(h->GetBinCenter(i));
-        }
-    }
-
-    if (values.empty())
-        return {0., 0.};
-
-    std::sort(values.begin(), values.end());
-
-    // Mediana
-    double median = 0.;
-    size_t n = values.size();
-    if (n % 2 == 0) {
-        median = 0.5 * (values[n/2 - 1] + values[n/2]);
-    } else {
-        median = values[n/2];
-    }
-
-    // Calcolo MAD (Median Absolute Deviation)
-    std::vector<double> deviations;
-    for (const auto& val : values) {
-        deviations.push_back(std::abs(val - median));
-    }
-    std::sort(deviations.begin(), deviations.end());
-
-    double mad = 0.;
-    if (n % 2 == 0) {
-        mad = 0.5 * (deviations[n/2 - 1] + deviations[n/2]);
-    } else {
-        mad = deviations[n/2];
-    }
-
-    return {median, mad};
-}
-*/
-
-
-
-/*
-double BtlTimeMonitoring::bootstrapMedianError(TH1* histo, int nSamples = 1000) {
-  std::vector<double> values;
-
-  // Ricostruisci la lista degli entry dell'histogramma
-  for (int i = 1; i <= histo->GetNbinsX(); ++i) {
-    int entries = static_cast<int>(histo->GetBinContent(i));
-    double x = histo->GetBinCenter(i);
-    for (int j = 0; j < entries; ++j) {
-      values.push_back(x);
-    }
-  }
-
-  if (values.size() < 2) {
-    return 0.0; // errore nullo se troppo pochi dati
-  }
-
-  // Imposta un random generator
-  std::mt19937 rng(42); // Seed fisso per reproducibilità (oppure std::random_device rd; std::mt19937 rng(rd()); per random puro)
-  std::uniform_int_distribution<> dist(0, values.size() - 1);
-
-  // Vettore per salvare le mediane dei resampling
-  std::vector<double> bootstrap_medians;
-  bootstrap_medians.reserve(nSamples);
-
-  // Loop su nSamples per il bootstrap
-  for (int i = 0; i < nSamples; ++i) {
-    std::vector<double> resampled;
-    resampled.reserve(values.size());
-    for (size_t j = 0; j < values.size(); ++j) {
-      resampled.push_back(values[dist(rng)]);
-    }
-
-    // Calcolo della mediana sul sample bootstrappato
-    std::sort(resampled.begin(), resampled.end());
-    double median;
-    size_t n = resampled.size();
-    if (n % 2 == 0) {
-      median = 0.5 * (resampled[n/2 - 1] + resampled[n/2]);
-    } else {
-      median = resampled[n/2];
-    }
-    bootstrap_medians.push_back(median);
-  }
-
-  // Calcolo della deviazione standard delle mediane
-  double mean = 0.;
-  for (const auto& m : bootstrap_medians) {
-    mean += m;
-  }
-  mean /= bootstrap_medians.size();
-
-  double variance = 0.;
-  for (const auto& m : bootstrap_medians) {
-    variance += (m - mean) * (m - mean);
-  }
-  variance /= bootstrap_medians.size();
-
-  return std::sqrt(variance); // Errore sulla mediana
-}
-
-*/
-
-
 // ------------ constructor and destructor --------------
 BtlTimeMonitoring::BtlTimeMonitoring(const edm::ParameterSet& iConfig)
     : folder_(iConfig.getParameter<std::string>("folder")),
@@ -738,7 +617,6 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
   float TOF_Sim_Time_sm = 0;
   float TOF_Reco_vtx_sm = 0; 
   float Delta_TOF_vtx_sm = 0;
-  //int sim_tr_ID = 0;
  
 
   for (auto const& simHit : btlSimHits) {
@@ -828,8 +706,10 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
     meOccupancy_->Fill(global_point.z(), global_point.phi());
 
+
 //--------------------------------------------------------------
 
+ 
     if(make_primary_filter_) {
     uint32_t cellID = detId.rawId();
 
@@ -842,17 +722,18 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
     float vtx_y = 0;
     if (!isPrimaryTrack(trackID, *simTracks, *simVerticesHandle, vtx_time, vtx_z, vtx_x, vtx_y)) 
             continue; // La traccia non è primaria, scartiamo la RecoHit
-    
+   
 
     //TOF from first SimHit time-stamp - Simvertex of primary vertex:
     float TOF_Sim_Time = m_btlSimHits[detId.rawId()].time - vtx_time;
     meSimHit_time->Fill(m_btlSimHits[detId.rawId()].time);
     meTOF_SimTime->Fill(TOF_Sim_Time);
 
+    
 
 //-----test photonLike TOF correction with reco hits------------------
-   
-    constexpr float c_speed = geant_units::operators::convertMmToCm(CLHEP::c_light);
+  
+   constexpr float c_speed = geant_units::operators::convertMmToCm(CLHEP::c_light);
     float photon_path_bs = std::sqrt(std::pow(global_point.x() - beamSpot.x0(), 2) + std::pow(global_point.y() - beamSpot.y0(), 2) + std::pow(global_point.z() - beamSpot.z0(), 2));
     float photon_path_vtx = std::sqrt(std::pow(global_point.x() - vtx_x, 2) + std::pow(global_point.y() - vtx_y, 2) + std::pow(global_point.z() - vtx_z, 2));
 
@@ -875,6 +756,7 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
     meDeltaTOF_bs -> Fill(Delta_TOF_bs);
     meDeltaTOF_vtx -> Fill(Delta_TOF_vtx);
 
+   
 //--------------------------------------------------------------------
 
     if (optionalPlots_) {
@@ -912,7 +794,8 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
  
 //------------------------------------------------------------------------------------------------------------
- 
+
+     
       float Distance_SimHit_vtx = std::sqrt(std::pow(global_point_sim.x() - vtx_x, 2) + std::pow(global_point_sim.y() - vtx_y, 2) + std::pow(global_point_sim.z() - vtx_z, 2));
       float TOF_SimHit_vtx = Distance_SimHit_vtx /c_speed;
       float DeltaTOF_Sim_pos_vtx = TOF_SimHit_vtx - TOF_Reco_vtx; 
@@ -946,8 +829,9 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
               std::cout << "================================\n" << std::endl;  
 
       }
-
+     
 //---------------------------------------------------------------------------------------------------------------
+/*
 //Plot di controllo sulla coda:
 
       if(m_btlSimHits[detId.rawId()].time < time_cutoff) {
@@ -957,7 +841,7 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
 	     Delta_TOF_vtx_sm = Delta_TOF_vtx;
 	     time_cutoff = m_btlSimHits[detId.rawId()].time;
       }
-
+*/
 
 //---------------------------------------------------------------------------------------------------------------      
 
@@ -981,18 +865,19 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
     n_reco_btl++;
 
-    }//filter close
+    }//make_primary_filter_
   }  // recHit loop
 
 
 //-----------------------------------------------------------
-if(Delta_TOF_vtx_sm!=0) {
+/* test con il filter make_primary_filter_
+  if(Delta_TOF_vtx_sm!=0) {
 
 	meTOF_Sim_Time_sm->Fill(TOF_Sim_Time_sm);
         meTOF_Reco_vtx_sm->Fill(TOF_Reco_vtx_sm);
         meDelta_TOF_vtx_sm->Fill(Delta_TOF_vtx_sm);
 }
-
+*/
 
 //-----------------------------------------------------------
 
@@ -1469,35 +1354,49 @@ if(Delta_TOF_vtx_sm!=0) {
       //Hit Time-Stamp correction:
       float hit_time_corr = hit_time - TOFUnc_BS;
 
-      //Global plots:
-      meUncTimeMean_->Fill(hit_time);
-      meUncTimeMean_corr_->Fill(hit_time_corr);
-      meUncAmpl_global_->Fill(hit_amplitude);
-      meUncEne_global_->Fill(hit_amplitude*0.03125);
 
       //Sensor Module Index extrapolation:
       auto index = topology->btlIndex(geoId.rawId());
       //uint32_t SMphi_index = index.first;
       uint32_t SMeta_index = index.second;
 
-      int RU_index = detId.globalRunit() + detId.mtdSide()*6; //RU idex in both the side wrt z 
+      int RU_index = (detId.mtdSide() == 0) ? (7 - detId.globalRunit()) : (6 + detId.globalRunit());
+     
       //int crystal_index = detId.crystal() + (SMeta_index-1)*16;
+
+      int adjusted_SMeta_index =SMeta_index - (RU_index-1)*8;
+      int adjusted_crystal_index = detId.crystal() + (SMeta_index - 1) * 16 - crystal_index_offset[RU_index - 1];
+
+      //----- HISTOGRAMS ----
+
+      //Global plots:
+      meUncTimeMean_->Fill(hit_time);
+      meUncTimeMean_corr_->Fill(hit_time_corr);
+      meUncAmpl_global_->Fill(hit_amplitude);
+      meUncEne_global_->Fill(hit_amplitude*0.03125);
+
+
+      //Histograms per fixed RU slice:
+      meUncTimeRUSlice_[RU_index-1]->Fill(hit_time);
+      meUncTimeRUSlice_corr_[RU_index-1]->Fill(hit_time_corr);
+
+
+      //Histograms for each SM slice:
+      meUncTimePhiSlice_[SMeta_index-1]->Fill(hit_time_corr);
+
+
+      //Histograms per single RU-Phi(tray number):
+      meUncTime_SingleRU_Phi_[RU_index-1][detId.mtdRR()-1]->Fill(hit_time_corr);		
       
-      //Fill histograms for each SM slice:
-      meUncTimePhiSlice_[SMeta_index-1]->Fill(hit_time);
-      meUncTimePhiSlice_corr_[SMeta_index-1]->Fill(hit_time_corr);
 
-    
+      //Histograms per single SM slice in each RU slice: 
+      meUncTimeRU_SM_[RU_index-1][adjusted_SMeta_index-1]->Fill(hit_time_corr);
+      
+      //Histograms per single CR slice in each RU slice:
+      //meUncTimeRU_CR_[RU_index-1][adjusted_crystal_index-1]->Fill(hit_time_corr);
 
-      //Histo per single RU inside the same slice (z>0):
-      if(detId.mtdSide() == 1) {
-	      meUncTimeRU_Zpos_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time); 
-	      meUncTimeRU_Zpos_corr_[detId.globalRunit()-1][detId.mtdRR()-1]->Fill(hit_time_corr);		
-      }
-	
-      //Histo per fixed RU slice:  		
-      meUncTimeRUSlice_[RU_index-1]->Fill(hit_time); 
-      meUncTimeRUSlice_corr_[RU_index-1]->Fill(hit_time_corr);	
+
+      //----- PROFILE ----
 
       //Profile per single RU around Phi in each RU slice:	
       meUncTimeRU_phi_[RU_index-1]->Fill(detId.mtdRR(),hit_time_corr);
@@ -1509,12 +1408,10 @@ if(Delta_TOF_vtx_sm!=0) {
       meUncTimeSM_z_->Fill(SMeta_index,hit_time_corr);
 
       //Profile per single CR slice in each RU slice:
-      int adjusted_crystal_index = detId.crystal() + (SMeta_index - 1) * 16 - crystal_index_offset[RU_index - 1];
       meUncTime_CR_RU_[RU_index - 1]->Fill(adjusted_crystal_index, hit_time_corr);
       
       
-      //Profile per single SM slice in each RU slice (z>0):
-      int adjusted_SMeta_index =SMeta_index - (RU_index-1)*8;
+      //Profile per single SM slice in each RU slice:
       meUncTimeCorr_SM_RU_[RU_index - 1] ->Fill(adjusted_SMeta_index, hit_time_corr);
 		
 
@@ -2335,31 +2232,55 @@ void BtlTimeMonitoring::bookHistograms(DQMStore::IBooker& ibook,
     }
 
 
-   for (unsigned int ihistoRU = 0; ihistoRU < nRU_; ++ihistoRU) {
+   for (unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
     for (unsigned int ihistoTR = 0; ihistoTR < nTR_; ++ihistoTR) {
-        std::string name = "UncTime_RU" + std::to_string(ihistoRU + 1) + "_TR" + std::to_string(ihistoTR + 1);
-        std::string title = "Uncorrected Time for RU " + std::to_string(ihistoRU + 1) + " TR " + std::to_string(ihistoTR + 1);
 
-        std::string name_corr = "UncTimeCorr_RU" + std::to_string(ihistoRU + 1) + "_TR" + std::to_string(ihistoTR + 1);
+        std::string name_corr = "BtlUncTime_SingleRU_" + std::to_string(ihistoRU + 1) + "_TR" + std::to_string(ihistoTR + 1);
         std::string title_corr = "Corrected Time for RU " + std::to_string(ihistoRU + 1) + " TR " + std::to_string(ihistoTR + 1);
 
-        meUncTimeRU_Zpos_[ihistoRU][ihistoTR] = ibook.book1D(name, title, 250, -5., 25.);
-        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR] = ibook.book1D(name_corr, title_corr, 250, -5., 25.);
+        meUncTime_SingleRU_Phi_[ihistoRU][ihistoTR] = ibook.book1D(name_corr, title_corr, 1000, -5., 25.);
 
-	meUncTimeRU_Zpos_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); // X-axis
-        meUncTimeRU_Zpos_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2);    // Y-axis
 
-        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); // X-axis
-        meUncTimeRU_Zpos_corr_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2);    // Y-axis
+        meUncTime_SingleRU_Phi_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); 
+        meUncTime_SingleRU_Phi_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2); 
    
     }
 
    }
 
+    for (unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
+    for (unsigned int ihistoSM = 0; ihistoSM < nSM_; ++ihistoSM) {
 
+        std::string name_corr = "BtlUncTimeRU_" + std::to_string(ihistoRU + 1) + "_SM" + std::to_string(ihistoSM + 1);
+        std::string title_corr = "Corrected Time for RU " + std::to_string(ihistoRU + 1) + " SM " + std::to_string(ihistoSM + 1);
+
+        meUncTimeRU_SM_[ihistoRU][ihistoSM] = ibook.book1D(name_corr, title_corr, 1000, -5., 25.);
+
+
+        meUncTimeRU_SM_[ihistoRU][ihistoSM]->setAxisTitle("Time [ns]", 1);
+        meUncTimeRU_SM_[ihistoRU][ihistoSM]->setAxisTitle("Counts", 2);
+
+    }
+   }
+/*
+    for (unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
+    for (unsigned int ihistoCR = 0; ihistoCR < nCR_; ++ihistoCR) {
+
+        std::string name_corr = "BtlUncTimeRU_" + std::to_string(ihistoRU + 1) + "_CR" + std::to_string(ihistoCR + 1);
+        std::string title_corr = "Corrected Time for RU " + std::to_string(ihistoRU + 1) + " CR " + std::to_string(ihistoCR + 1);
+
+        meUncTimeRU_CR_[ihistoRU][ihistoCR] = ibook.book1D(name_corr, title_corr, 1000, -5., 25.);
+
+
+        meUncTimeRU_CR_[ihistoRU][ihistoCR]->setAxisTitle("Time [ns]", 1);
+        meUncTimeRU_CR_[ihistoRU][ihistoCR]->setAxisTitle("Counts", 2);
+
+    }
+   }
+*/
 
    for(unsigned int ihistoRU = 0; ihistoRU < nRU_tot_; ++ihistoRU) {
-           std::string name = "BTLmeUncTimeRU_phi_" + std::to_string(ihistoRU + 1);
+           std::string name = "BTLUncTimeRU_phi_" + std::to_string(ihistoRU + 1);
             std::string title = "Mean Time per single RU inside of each slice in RU z<0 (RU " + std::to_string(ihistoRU + 1) + "); Tray Index ;<Time corrected>";
 
             meUncTimeRU_phi_[ihistoRU] = ibook.bookProfile(name, title,
@@ -2373,19 +2294,12 @@ void BtlTimeMonitoring::bookHistograms(DQMStore::IBooker& ibook,
 
    for (uint32_t i = 0; i < nSMphi_; ++i) {
 
-      	meUncTimePhiSlice_[i] = ibook.book1D(
-			Form("meUncTimePhiSlice_%d", i),
-			Form("BTL Hit Time Distribution for Phi Slice %d", i),
-			1000, -5., 25.);
-	meUncTimePhiSlice_[i]->setAxisTitle("Time [ns]", 1);
-        meUncTimePhiSlice_[i]->setAxisTitle("Entries/30ps", 2);  
-
-	meUncTimePhiSlice_corr_[i] = ibook.book1D(
-			Form("meUncTimePhiSlice_corr_%d", i),
+	meUncTimePhiSlice_[i] = ibook.book1D(
+			Form("BtlUncTimePhiSlice_%d", i),
 			Form("Corrected BTL Hit Time Distribution for Phi Slice %d", i),
 			1000, -5., 25.);
-	meUncTimePhiSlice_corr_[i]->setAxisTitle("Time [ns]", 1);
-	meUncTimePhiSlice_corr_[i]->setAxisTitle("Entries/30ps", 2); 
+	meUncTimePhiSlice_[i]->setAxisTitle("Time [ns]", 1);
+	meUncTimePhiSlice_[i]->setAxisTitle("Entries/30ps", 2); 
    }
 
 

@@ -49,6 +49,9 @@
 
 #include "MTDHit.h"
 
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
+#include <CLHEP/Units/GlobalPhysicalConstants.h>
+
 class BtlLocalRecoValidation : public DQMEDAnalyzer {
 public:
   explicit BtlLocalRecoValidation(const edm::ParameterSet&);
@@ -77,6 +80,7 @@ private:
   edm::EDGetTokenT<FTLClusterCollection> btlRecCluToken_;
   edm::EDGetTokenT<MTDTrackingDetSetVector> mtdTrackingHitToken_;
   edm::EDGetTokenT<MtdRecoClusterToSimLayerClusterAssociationMap> r2sAssociationMapToken_;
+  edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
 
   const edm::ESGetToken<MTDGeometry, MTDDigiGeometryRecord> mtdgeoToken_;
   const edm::ESGetToken<MTDTopology, MTDTopologyRcd> mtdtopoToken_;
@@ -94,6 +98,7 @@ private:
   MonitorElement* meHitTimeError_;
 
   MonitorElement* meOccupancy_;
+  MonitorElement* meTOF_Reco_bs;
 
   //local position monitoring
   MonitorElement* meLocalOccupancy_;
@@ -308,6 +313,7 @@ BtlLocalRecoValidation::BtlLocalRecoValidation(const edm::ParameterSet& iConfig)
   mtdTrackingHitToken_ = consumes<MTDTrackingDetSetVector>(iConfig.getParameter<edm::InputTag>("trkHitTag"));
   r2sAssociationMapToken_ = consumes<MtdRecoClusterToSimLayerClusterAssociationMap>(
       iConfig.getParameter<edm::InputTag>("r2sAssociationMapTag"));
+  beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
 }
 
 BtlLocalRecoValidation::~BtlLocalRecoValidation() {}
@@ -325,6 +331,15 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
   const MTDTopology* topology = topologyHandle.product();
 
   auto const& cpe = iSetup.getData(cpeToken_);
+
+  // Recupera il BeamSpot--------------------------------------------------------
+  edm::Handle<reco::BeamSpot> beamSpotHandle;
+  iEvent.getByToken(beamSpotToken_, beamSpotHandle);
+
+  if (!beamSpotHandle.isValid()) {
+    throw cms::Exception("BtlTimeMonitoring") << "BeamSpot is not available in the event!";
+  }
+  const reco::BeamSpot& beamSpot = *beamSpotHandle;
 
   auto btlRecHitsHandle = makeValid(iEvent.getHandle(btlRecHitsToken_));
   auto btlSimHitsHandle = makeValid(iEvent.getHandle(btlSimHitsToken_));
@@ -402,6 +417,17 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
     meHitLongPos_->Fill(recHit.position());
 
     meOccupancy_->Fill(global_point.z(), global_point.phi());
+
+
+    //---------------------------------------------------
+    constexpr float c_speed = geant_units::operators::convertMmToCm(CLHEP::c_light);
+    float photon_path_bs = std::sqrt(std::pow(global_point.x() - beamSpot.x0(), 2) + std::pow(global_point.y() - beamSpot.y0(), 2) + std::pow(global_point.z() - beamSpot.z0(), 2));
+    float TOF_Reco_bs = photon_path_bs / c_speed;
+    
+    float RecoHit_Time_Corr_bs = recHit.time() - TOF_Reco_bs;
+
+    meTOF_Reco_bs->Fill(RecoHit_Time_Corr_bs);
+
 
     if (optionalPlots_) {
       meLocalOccupancy_->Fill(local_point.x() + recHit.position(), local_point.y());
@@ -1038,6 +1064,9 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
 
   meUnmatchedRecHit_ = ibook.book1D(
       "UnmatchedRecHit", "log10(#BTL crystals with rechits but no simhit);log10(#BTL rechits)", 80, -2., 6.);
+
+  meTOF_Reco_bs = ibook.book1D("BtlTOF_Reco_bs", "reco TOF photon-like  ;Reco TOF [ns];Entries", 1000, -3., 18.);
+
 
   meNclusters_ = ibook.book1D("BtlNclusters", "Number of BTL RECO clusters;log_{10}(N_{RECO})", 100, 0., 5.25);
   meCluTime_ = ibook.book1D("BtlCluTime", "BTL cluster time ToA;ToA [ns]", 250, 0, 25);
