@@ -31,28 +31,38 @@ process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
 )
 
 
-file_list = [
-        f'file:/eos/infnts/cms/store/user/cgiraldi/SingleGamma_FlatEne_low_energy/step3_{i}.root'
-        for i in range (1, 300)
-]
+#file_list = [
+#        f'file:/eos/infnts/cms/store/user/cgiraldi/SingleGamma_FlatEne_low_energy/step3_{i}.root'
+#        for i in range (1, 300)
+#]
 
 # --- in case of condor: sys.argv[1]
 process.source = cms.Source("PoolSource",
-#    fileNames = cms.untracked.vstring(
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0496e9e7-4540-4673-911f-0c6c811fa6f2.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/065c1d5f-46b6-4063-b985-810eff026d43.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/07b4c19e-e29e-4cab-bdb2-f1557e9bd9f1.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0da94c27-0173-46f4-988b-c52f1febd6df.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0dd8ca91-80bd-4f85-8797-451d7583282b.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/16f18951-be93-4bcf-9975-9c2b70677a88.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1cdcc9fe-c6cc-4ac8-ae18-376d1d308932.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1df4f4ae-3697-40f3-a28c-0ad8382e1c17.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1fc7f3d7-0024-4a4d-a455-37924b68b750.root',
-#        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/20c5a34e-76cf-42e2-ab71-c41f310b5f56.root'
+    fileNames = cms.untracked.vstring(
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0496e9e7-4540-4673-911f-0c6c811fa6f2.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/065c1d5f-46b6-4063-b985-810eff026d43.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/07b4c19e-e29e-4cab-bdb2-f1557e9bd9f1.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0da94c27-0173-46f4-988b-c52f1febd6df.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/0dd8ca91-80bd-4f85-8797-451d7583282b.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/16f18951-be93-4bcf-9975-9c2b70677a88.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1cdcc9fe-c6cc-4ac8-ae18-376d1d308932.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1df4f4ae-3697-40f3-a28c-0ad8382e1c17.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/1fc7f3d7-0024-4a4d-a455-37924b68b750.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/20c5a34e-76cf-42e2-ab71-c41f310b5f56.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/230c3934-5737-42d5-8cae-c27fe4eea912.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/23b239b9-ecb9-405e-b1f9-8af5b7d8d924.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/25a7a897-6d38-41e9-939e-1b499f4eb5eb.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/267e0319-0ef1-4566-89f3-e451bb93c69e.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/2bc27e53-fad7-4ff8-be91-b9f931a9343a.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/2cf781b3-70d4-436f-8145-3f3aea8037af.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/2fc29301-44fb-49bf-a906-34585969d02e.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/302e3898-1f21-4522-969a-7461355fc4dd.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/370a1a06-7bcb-48f1-8637-455386fbb05a.root',
+        '/store/relval/CMSSW_15_0_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/141X_mcRun4_realistic_v3_STD_RegeneratedGS_Run4D110_noPU-v1/2590000/3776a593-f458-497e-a141-b4dedc3af173.root'
 
-#        )
+        )
 
-     fileNames = cms.untracked.vstring (*file_list)
+#     fileNames = cms.untracked.vstring (*file_list)
 )
 
 process.mix.digitizers = cms.PSet()

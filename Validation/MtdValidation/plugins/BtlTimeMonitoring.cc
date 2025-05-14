@@ -349,7 +349,7 @@ private:
   static constexpr double calib_EneRecoHit_ = 0.03125;
   static constexpr double hitMaxTime_= 19.5;
   static constexpr double hitMaxAmplitude_= 450.;
-  static constexpr double hitMinimumAmplitude_ = 65.;
+  static constexpr double hitMinimumAmplitude_ = 55.;
   static constexpr bool make_primary_filter_ = false;
   static constexpr double simUnit_ = 1e9;
   std::vector<int> crystal_index_offset = {
@@ -372,7 +372,7 @@ private:
   MonitorElement* meUncTimeMean_corr_;
   MonitorElement* meUncTimeRUSlice_[nRU_tot_];
   MonitorElement* meUncTimeRUSlice_corr_[nRU_tot_];
-  MonitorElement* meUncTime_SingleRU_Phi_[nRU_tot_][nTR_];
+  MonitorElement* meUncTime_SingleRU_[nRU_tot_][nTR_];
   MonitorElement* meUncTimePhiSlice_[nSMphi_];
   MonitorElement* meUncTimeRU_phi_[nRU_tot_];
   MonitorElement* meUncAmpl_global_;
@@ -1385,8 +1385,8 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
       meUncTimePhiSlice_[SMeta_index-1]->Fill(hit_time_corr);
 
 
-      //Histograms per single RU-Phi(tray number):
-      meUncTime_SingleRU_Phi_[RU_index-1][detId.mtdRR()-1]->Fill(hit_time_corr);		
+      //Histograms per single RU [RU slice - Tray number]:
+      meUncTime_SingleRU_[RU_index-1][detId.mtdRR()-1]->Fill(hit_time_corr);		
       
 
       //Histograms per single SM slice in each RU slice: 
@@ -1396,7 +1396,7 @@ void BtlTimeMonitoring::analyze(const edm::Event& iEvent, const edm::EventSetup&
       //meUncTimeRU_CR_[RU_index-1][adjusted_crystal_index-1]->Fill(hit_time_corr);
 
 
-      //----- PROFILE ----
+      //----- PROFILE HISTOGRAMS ----
 
       //Profile per single RU around Phi in each RU slice:	
       meUncTimeRU_phi_[RU_index-1]->Fill(detId.mtdRR(),hit_time_corr);
@@ -2238,11 +2238,11 @@ void BtlTimeMonitoring::bookHistograms(DQMStore::IBooker& ibook,
         std::string name_corr = "BtlUncTime_SingleRU_" + std::to_string(ihistoRU + 1) + "_TR" + std::to_string(ihistoTR + 1);
         std::string title_corr = "Corrected Time for RU " + std::to_string(ihistoRU + 1) + " TR " + std::to_string(ihistoTR + 1);
 
-        meUncTime_SingleRU_Phi_[ihistoRU][ihistoTR] = ibook.book1D(name_corr, title_corr, 1000, -5., 25.);
+        meUncTime_SingleRU_[ihistoRU][ihistoTR] = ibook.book1D(name_corr, title_corr, 1000, -5., 25.);
 
 
-        meUncTime_SingleRU_Phi_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); 
-        meUncTime_SingleRU_Phi_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2); 
+        meUncTime_SingleRU_[ihistoRU][ihistoTR]->setAxisTitle("Time [ns]", 1); 
+        meUncTime_SingleRU_[ihistoRU][ihistoTR]->setAxisTitle("Counts", 2); 
    
     }
 
