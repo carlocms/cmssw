@@ -4,5 +4,7 @@ from Validation.MtdValidation.btlSimHitsPostProcessor_cfi import btlSimHitsPostP
 from Validation.MtdValidation.btlLocalRecoPostProcessor_cfi import btlLocalRecoPostProcessor
 from Validation.MtdValidation.MtdTracksPostProcessor_cfi import MtdTracksPostProcessor
 from Validation.MtdValidation.Primary4DVertexPostProcessor_cfi import Primary4DVertexPostProcessor
+from Validation.MtdValidation.btlTimeMonitoringPostProcessor_cfi import btlTimeMonitoringPostProcessor
 
-mtdValidationPostProcessor = cms.Sequence(btlSimHitsPostProcessor + btlLocalRecoPostProcessor + MtdTracksPostProcessor + Primary4DVertexPostProcessor)
+
+mtdValidationPostProcessor = cms.Sequence(btlSimHitsPostProcessor + btlLocalRecoPostProcessor + MtdTracksPostProcessor + Primary4DVertexPostProcessor + btlTimeMonitoringPostProcessor)

@@ -33,8 +33,9 @@ process.load("Validation.MtdValidation.btlLocalRecoPostProcessor_cfi")
 process.load("Validation.MtdValidation.MtdTracksPostProcessor_cfi")
 process.load("Validation.MtdValidation.MtdEleIsoPostProcessor_cfi")
 process.load("Validation.MtdValidation.Primary4DVertexPostProcessor_cfi")
+process.load("Validation.MtdValidation.btlTimeMonitoringPostProcessor_cfi")
 
-process.harvesting = cms.Sequence(process.btlSimHitsPostProcessor + process.btlLocalRecoPostProcessor + process.MtdTracksPostProcessor + process.MtdEleIsoPostProcessor + process.Primary4DVertexPostProcessor)
+process.harvesting = cms.Sequence(process.btlSimHitsPostProcessor + process.btlLocalRecoPostProcessor + process.MtdTracksPostProcessor + process.MtdEleIsoPostProcessor + process.Primary4DVertexPostProcessor + process.btlTimeMonitoringPostProcessor)
 
 process.p = cms.Path( process.harvesting )
 
