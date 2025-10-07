@@ -1,0 +1,788 @@
+cmsExec: Starting job on  Fri Sep 26 18:39:05 CEST 2025
+
+cmsExec: Running on  Linux farmui02.ts.infn.it 3.10.0-1160.119.1.el7.x86_64 #1 SMP Tue Jun 4 14:43:51 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
+cmsExec: System release  AlmaLinux release 8.10 (Cerulean Leopard)
+
+cmsExec: CMSSW_RELEASE_BASE  /cvmfs/cms.cern.ch/el8_amd64_gcc12/cms/cmssw/CMSSW_15_1_0_pre4
+cmsExec: CMSSW_BASE          /gfsvol01/cms/users/giraldin/TimeMonitoring/CMSSW_15_1_0_pre4
+cmsExec: working directory   /gfsvol01/cms/users/giraldin/TimeMonitoring/CMSSW_15_1_0_pre4/src/Validation/MtdValidation/test
+
+total 5178
+-rw-rw-r-- 1 giraldin gr_cms    1965 Sep 26 09:13 mtdHarvesting_cfg.py
+-rw-rw-r-- 1 giraldin gr_cms    5250 Sep 26 10:46 listaMinBias30
+-rw-r--r-- 1 giraldin gr_cms 2854886 Sep 26 12:08 step3_inDQM.root
+-rw-rw-r-- 1 giraldin gr_cms  299726 Sep 26 12:08 cmsExec_mtdValidation_cfg_20250926_104918.log
+-rw-r--r-- 1 giraldin gr_cms 2132895 Sep 26 12:08 DQM_V0001_R000000001__Global__CMSSW_X_Y_Z__RECO.root
+-rw-rw-r-- 1 giraldin gr_cms    5104 Sep 26 18:38 mtdValidation_cfg.py
+-rw-rw-r-- 1 giraldin gr_cms     576 Sep 26 18:39 cmsExec_mtdValidation_cfg_20250926_183905.log
+
+%MSG-i ThreadStreamSetup:  (NoModuleName) 26-Sep-2025 18:39:14 CEST pre-events
+setting # threads 4
+setting # streams 4
+%MSG
+%MSG-i AlpakaService:  (NoModuleName) 26-Sep-2025 18:39:17 CEST pre-events
+AlpakaServiceSerialSync succesfully initialised.
+Found 1 device:
+  - Intel(R) Xeon(R) CPU E5-2640 v4 @ 2.40GHz
+%MSG
+26-Sep-2025 18:39:26 CEST  Initiating request to open file root://eosinfnts.ts.infn.it:1094//eos/infnts/cms/store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/c1d756c4-6599-4c2f-aa00-77b997872b2d.root
+%MSG-w XrdAdaptorInternal:  file_open 26-Sep-2025 18:39:27 CEST pre-events
+Failed to open file at URL root://eosinfnts.ts.infn.it:1094//eos/infnts/cms/store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/c1d756c4-6599-4c2f-aa00-77b997872b2d.root?xrdcl.requuid=a7e460d8-a535-4ead-8a78-a03d82289efb.
+%MSG
+%MSG-w XrdAdaptorInternal:  file_open 26-Sep-2025 18:39:27 CEST pre-events
+Failed to open file at URL root://eosinfnts.ts.infn.it:1094//eos/infnts/cms/store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/c1d756c4-6599-4c2f-aa00-77b997872b2d.root?xrdcl.requuid=39251b14-0121-4f51-b0bf-34848daa666e.
+%MSG
+26-Sep-2025 18:39:27 CEST  Initiating request to open file root://xrootd-cms.infn.it//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/c1d756c4-6599-4c2f-aa00-77b997872b2d.root
+%MSG-f XrdAdaptor:  file_open 26-Sep-2025 18:39:30 CEST pre-events
+Opened a file at URL root://stor114.cis.gov.pl:21621//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/c1d756c4-6599-4c2f-aa00-77b997872b2d.root?org.dcache.uuid=72253464-440c-4f5e-ba5b-7598bffade60&org.dcache.xrootd.client=giraldin.36711@farmui02.ts.infn.it&xrd.logintoken=org.dcache.door=se.cis.gov.pl:1094&xrdcl.requuid=33ea8dbf-b69e-4b6a-ab76-8a6a62b1c2f4
+%MSG
+26-Sep-2025 18:40:32 CEST  Successfully opened file root://xrootd-cms.infn.it//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/c1d756c4-6599-4c2f-aa00-77b997872b2d.root
+[2025-09-26 18:40:43.620227 +0200][Error  ][AsyncSock         ] [cmsxrootd-site1.fnal.gov:1094.0] Socket error encountered: [ERROR] Socket error
+%MSG-f XrdAdaptor:  (NoModuleName) 26-Sep-2025 18:40:44 CEST pre-events
+Opened a file at URL root://cmsstor101.fnal.gov:33695//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/c1d756c4-6599-4c2f-aa00-77b997872b2d.root?org.dcache.uuid=0b1485dd-24c1-4ccc-8762-b637929f0cf8&org.dcache.xrootd.client=giraldin.36711@farmui02.ts.infn.it&tried=+1213xrootd-redic.pi.infn.it,+1213llrxrd-redir.in2p3.fr,+1213xrootd-cms-redir-int.cr.cnaf.infn.it,se.cis.gov.pl&triedrc=resel&xrd.logintoken=org.dcache.door=2620:6a:0:8420:0:0:0:101:1095&xrdcl.requuid=6f89aa73-5a8d-4d7a-818d-d39ccdadeb82
+%MSG
+Begin processing the 1st record. Run 1, Event 46301, LumiSection 464 on stream 1 at 26-Sep-2025 18:40:57.560 CEST
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:41:24 CEST Run: 1 Event: 46346
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 1100 0011 1111 1000 0110
+ rawId       : 0x62cc3f86 / 1657552774
+ bits[0:24]  : 00cc3f86
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 12
+ Crystal type: 3
+ Readout unit: 6
+ Readout unit by type: 2
+ Detector Module: 10
+ Sensor Module: 0
+ Module      : 15
+ Crystal     : 7
+ Crystal in DB: 9
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:42:12 CEST Run: 1 Event: 47210
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1001 0011 0010 0101 0100 1010
+ rawId       : 0x6293254a / 1653810506
+ bits[0:24]  : 0093254a
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 19
+ Crystal type: 1
+ Readout unit: 1
+ Readout unit by type: 1
+ Detector Module: 9
+ Sensor Module: 0
+ Module      : 9
+ Crystal     : 11
+ Crystal in DB: 5
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:42:12 CEST Run: 1 Event: 47213
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 0100 0001 0011 0100 1010
+ rawId       : 0x6284134a / 1652822858
+ bits[0:24]  : 0084134a
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 4
+ Crystal type: 3
+ Readout unit: 5
+ Readout unit by type: 1
+ Detector Module: 0
+ Sensor Module: 1
+ Module      : 4
+ Crystal     : 11
+ Crystal in DB: 10
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:42:12 CEST Run: 1 Event: 47217
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 0011 0101 1110 1000 0100
+ rawId       : 0x62835e84 / 1652776580
+ bits[0:24]  : 00835e84
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 3
+ Crystal type: 2
+ Readout unit: 4
+ Readout unit by type: 2
+ Detector Module: 7
+ Sensor Module: 1
+ Module      : 23
+ Crystal     : 5
+ Crystal in DB: 4
+
+%MSG
+26-Sep-2025 18:43:06 CEST  Closed file root://xrootd-cms.infn.it//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/c1d756c4-6599-4c2f-aa00-77b997872b2d.root
+26-Sep-2025 18:43:06 CEST  Initiating request to open file root://eosinfnts.ts.infn.it:1094//eos/infnts/cms/store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root
+%MSG-w XrdAdaptorInternal:  file_open 26-Sep-2025 18:43:07 CEST  Run: 1 Event: 47300
+Failed to open file at URL root://eosinfnts.ts.infn.it:1094//eos/infnts/cms/store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root?xrdcl.requuid=f47f8e22-8709-4f27-9101-082e70b0accf.
+%MSG
+%MSG-w XrdAdaptorInternal:  file_open 26-Sep-2025 18:43:07 CEST  Run: 1 Event: 47300
+Failed to open file at URL root://eosinfnts.ts.infn.it:1094//eos/infnts/cms/store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root?xrdcl.requuid=605f0d54-6fd1-409e-801c-294f8c98a2ca.
+%MSG
+26-Sep-2025 18:43:07 CEST  Initiating request to open file root://xrootd-cms.infn.it//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root
+%MSG-f XrdAdaptor:  file_open 26-Sep-2025 18:43:09 CEST Run: 1 Event: 47300
+Opened a file at URL root://stor113.cis.gov.pl:24738//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root?org.dcache.uuid=6b12ff2f-cd04-41ce-877f-f1271b0ed463&org.dcache.xrootd.client=giraldin.36711@farmui02.ts.infn.it&xrd.logintoken=org.dcache.door=se.cis.gov.pl:1094&xrdcl.requuid=b2281e67-4d25-4f3d-b985-7d77c7c3cc05
+%MSG
+26-Sep-2025 18:43:11 CEST  Successfully opened file root://xrootd-cms.infn.it//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root
+%MSG-f XrdAdaptor:  (NoModuleName) 26-Sep-2025 18:43:22 CEST pre-events
+Opened a file at URL root://cmsstor904.fnal.gov:16482//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root?org.dcache.uuid=c7ad071f-c4fc-42a6-b5d7-9feed89d9880&org.dcache.xrootd.client=giraldin.36711@farmui02.ts.infn.it&tried=+1213llrxrd-redir.in2p3.fr,+1213xrootd-redic.pi.infn.it,+1213xrootd-cms-redir-int.cr.cnaf.infn.it,se.cis.gov.pl&triedrc=resel&xrd.logintoken=org.dcache.door=2620:6a:0:8420:0:0:0:101:1095&xrdcl.requuid=14e5fb24-1fdb-4214-a8f7-83600755b6cc
+%MSG
+[2025-09-26 18:43:22.683113 +0200][Error  ][AsyncSock         ] [cmsxrootd-site3.fnal.gov:1094.0] Socket error encountered: [ERROR] Socket error
+%MSG-f XrdAdaptorLvl3:  AfterFile 26-Sep-2025 18:43:22 CEST Run: 1 Event: 47300
+Deactivating stor113.cis.gov.pl from active sources because its quality (580) is higher than 260 and 4 times larger than the other active server cmsstor904.fnal.gov (131) 
+%MSG
+%MSG-f XrdAdaptor:  (NoModuleName) 26-Sep-2025 18:43:30 CEST pre-events
+Opened a file at URL root://cmsstor904.fnal.gov:16482//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root?org.dcache.uuid=c0469b38-2cc3-456d-94af-74925edc92f0&org.dcache.xrootd.client=giraldin.36711@farmui02.ts.infn.it&tried=+1213llrxrd-redir.in2p3.fr,+1213xrootd-redic.pi.infn.it,+1213xrootd-cms-redir-int.cr.cnaf.infn.it,cmsxrootd-site3.fnal.gov,se.cis.gov.pl&triedrc=resel&xrd.logintoken=org.dcache.door=2620:6a:0:8420:0:0:0:101:1095&xrdcl.requuid=f96374e3-d2cb-4f6c-923c-12164afdde20
+%MSG
+%MSG-f XrdAdaptor:  (NoModuleName) 26-Sep-2025 18:43:40 CEST pre-events
+Opened a file at URL root://cmsstor904.fnal.gov:16482//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root?org.dcache.uuid=cb362119-cd4f-4960-a70d-57946520db2c&org.dcache.xrootd.client=giraldin.36711@farmui02.ts.infn.it&tried=+1213xrootd-redic.pi.infn.it,+1213llrxrd-redir.in2p3.fr,+1213xrootd-cms-redir-int.cr.cnaf.infn.it,cmsxrootd-site3.fnal.gov,se.cis.gov.pl&triedrc=resel&xrd.logintoken=org.dcache.door=2620:6a:0:8420:0:0:0:101:1095&xrdcl.requuid=532ee643-86a6-4799-979d-06badaa82869
+%MSG
+[2025-09-26 18:43:41.976585 +0200][Error  ][AsyncSock         ] [cmsxrootd-site2.fnal.gov:1094.0] Socket error encountered: [ERROR] Socket error
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:43:42 CEST Run: 1 Event: 39121
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 1001 0011 0001 1000 0011
+ rawId       : 0x62c93183 / 1657352579
+ bits[0:24]  : 00c93183
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 9
+ Crystal type: 1
+ Readout unit: 2
+ Readout unit by type: 2
+ Detector Module: 9
+ Sensor Module: 1
+ Module      : 12
+ Crystal     : 4
+ Crystal in DB: 3
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:43:49 CEST Run: 1 Event: 39145
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1101 0111 0110 0010 0100 1110
+ rawId       : 0x62d7624e / 1658282574
+ bits[0:24]  : 00d7624e
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 23
+ Crystal type: 2
+ Readout unit: 3
+ Readout unit by type: 1
+ Detector Module: 11
+ Sensor Module: 1
+ Module      : 24
+ Crystal     : 15
+ Crystal in DB: 14
+
+%MSG
+%MSG-f XrdAdaptor:  (NoModuleName) 26-Sep-2025 18:43:49 CEST pre-events
+Opened a file at URL root://cmsstor904.fnal.gov:16482//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root?org.dcache.uuid=44d1f519-4d4f-4501-bf34-dc277bb5a983&org.dcache.xrootd.client=giraldin.36711@farmui02.ts.infn.it&tried=+1213llrxrd-redir.in2p3.fr,+1213xrootd-redic.pi.infn.it,+1213xrootd-cms-redir-int.cr.cnaf.infn.it,cmsxrootd-site3.fnal.gov,se.cis.gov.pl&triedrc=resel&xrd.logintoken=org.dcache.door=2620:6a:0:8420:0:0:0:101:1095&xrdcl.requuid=903202e0-45cc-4800-aba7-fad61452bc5f
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:43:57 CEST Run: 1 Event: 39617
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 0110 0100 1001 0100 1101
+ rawId       : 0x62c6494d / 1657162061
+ bits[0:24]  : 00c6494d
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 6
+ Crystal type: 1
+ Readout unit: 1
+ Readout unit by type: 1
+ Detector Module: 10
+ Sensor Module: 1
+ Module      : 18
+ Crystal     : 14
+ Crystal in DB: 13
+
+%MSG
+Begin processing the 501st record. Run 1, Event 39801, LumiSection 399 on stream 3 at 26-Sep-2025 18:44:12.344 CEST
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:44:31 CEST Run: 1 Event: 39871
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1010 0000 0101 0001 1000 1010
+ rawId       : 0x62a0518a / 1654673802
+ bits[0:24]  : 00a0518a
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 32
+ Crystal type: 1
+ Readout unit: 2
+ Readout unit by type: 2
+ Detector Module: 7
+ Sensor Module: 0
+ Module      : 20
+ Crystal     : 11
+ Crystal in DB: 5
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:44:31 CEST Run: 1 Event: 39884
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 0100 0101 1011 0100 1100
+ rawId       : 0x62c45b4c / 1657035596
+ bits[0:24]  : 00c45b4c
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 4
+ Crystal type: 3
+ Readout unit: 5
+ Readout unit by type: 1
+ Detector Module: 3
+ Sensor Module: 1
+ Module      : 22
+ Crystal     : 13
+ Crystal in DB: 12
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:44:31 CEST Run: 1 Event: 39887
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 1101 0011 1001 1000 0010
+ rawId       : 0x628d3982 / 1653422466
+ bits[0:24]  : 008d3982
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 13
+ Crystal type: 1
+ Readout unit: 2
+ Readout unit by type: 2
+ Detector Module: 6
+ Sensor Module: 0
+ Module      : 14
+ Crystal     : 3
+ Crystal in DB: 13
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:44:49 CEST Run: 1 Event: 39957
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1001 1000 0010 1010 0100 0001
+ rawId       : 0x62982a41 / 1654139457
+ bits[0:24]  : 00982a41
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 24
+ Crystal type: 2
+ Readout unit: 3
+ Readout unit by type: 1
+ Detector Module: 1
+ Sensor Module: 1
+ Module      : 10
+ Crystal     : 2
+ Crystal in DB: 1
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:00 CEST Run: 1 Event: 40305
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1010 0000 0100 1011 1000 1101
+ rawId       : 0x62a04b8d / 1654672269
+ bits[0:24]  : 00a04b8d
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 32
+ Crystal type: 3
+ Readout unit: 6
+ Readout unit by type: 2
+ Detector Module: 10
+ Sensor Module: 1
+ Module      : 18
+ Crystal     : 14
+ Crystal in DB: 13
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:08 CEST Run: 1 Event: 40323
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 1010 0110 0010 0100 0000
+ rawId       : 0x62ca6240 / 1657430592
+ bits[0:24]  : 00ca6240
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 10
+ Crystal type: 2
+ Readout unit: 3
+ Readout unit by type: 1
+ Detector Module: 11
+ Sensor Module: 1
+ Module      : 24
+ Crystal     : 1
+ Crystal in DB: 0
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:09 CEST Run: 1 Event: 40333
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 1110 0000 1110 1000 1110
+ rawId       : 0x628e0e8e / 1653477006
+ bits[0:24]  : 008e0e8e
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 14
+ Crystal type: 2
+ Readout unit: 4
+ Readout unit by type: 2
+ Detector Module: 8
+ Sensor Module: 0
+ Module      : 3
+ Crystal     : 15
+ Crystal in DB: 1
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:09 CEST Run: 1 Event: 40333
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 0111 0011 0101 0100 1110
+ rawId       : 0x62c7354e / 1657222478
+ bits[0:24]  : 00c7354e
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 7
+ Crystal type: 1
+ Readout unit: 1
+ Readout unit by type: 1
+ Detector Module: 2
+ Sensor Module: 0
+ Module      : 13
+ Crystal     : 15
+ Crystal in DB: 1
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:09 CEST Run: 1 Event: 40349
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 0001 0101 1010 1000 1111
+ rawId       : 0x62c15a8f / 1656838799
+ bits[0:24]  : 00c15a8f
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 1
+ Crystal type: 2
+ Readout unit: 4
+ Readout unit by type: 2
+ Detector Module: 3
+ Sensor Module: 1
+ Module      : 22
+ Crystal     : 16
+ Crystal in DB: 15
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:16 CEST Run: 1 Event: 40386
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 1011 0101 0111 1000 1111
+ rawId       : 0x628b578f / 1653299087
+ bits[0:24]  : 008b578f
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 11
+ Crystal type: 3
+ Readout unit: 6
+ Readout unit by type: 2
+ Detector Module: 11
+ Sensor Module: 0
+ Module      : 21
+ Crystal     : 16
+ Crystal in DB: 0
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:16 CEST Run: 1 Event: 40707
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 0010 0100 1010 0100 0101
+ rawId       : 0x62824a45 / 1652705861
+ bits[0:24]  : 00824a45
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 2
+ Crystal type: 2
+ Readout unit: 3
+ Readout unit by type: 1
+ Detector Module: 10
+ Sensor Module: 1
+ Module      : 18
+ Crystal     : 6
+ Crystal in DB: 5
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:34 CEST Run: 1 Event: 40777
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1101 0011 0011 1110 0100 0100
+ rawId       : 0x62d33e44 / 1658011204
+ bits[0:24]  : 00d33e44
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 19
+ Crystal type: 2
+ Readout unit: 3
+ Readout unit by type: 1
+ Detector Module: 10
+ Sensor Module: 0
+ Module      : 15
+ Crystal     : 5
+ Crystal in DB: 11
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:34 CEST Run: 1 Event: 40779
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1001 1001 0011 1111 1000 1001
+ rawId       : 0x62993f89 / 1654210441
+ bits[0:24]  : 00993f89
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 25
+ Crystal type: 3
+ Readout unit: 6
+ Readout unit by type: 2
+ Detector Module: 10
+ Sensor Module: 0
+ Module      : 15
+ Crystal     : 10
+ Crystal in DB: 6
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:43 CEST Run: 1 Event: 40813
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1110 0010 0001 0111 0100 0101
+ rawId       : 0x62e21745 / 1658984261
+ bits[0:24]  : 00e21745
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 34
+ Crystal type: 3
+ Readout unit: 5
+ Readout unit by type: 1
+ Detector Module: 4
+ Sensor Module: 1
+ Module      : 5
+ Crystal     : 6
+ Crystal in DB: 5
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:45:53 CEST Run: 1 Event: 40840
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 0001 0011 1010 1000 1111
+ rawId       : 0x62813a8f / 1652636303
+ bits[0:24]  : 00813a8f
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 1
+ Crystal type: 2
+ Readout unit: 4
+ Readout unit by type: 2
+ Detector Module: 6
+ Sensor Module: 0
+ Module      : 14
+ Crystal     : 16
+ Crystal in DB: 0
+
+%MSG
+%MSG-f XrdAdaptor:  (NoModuleName) 26-Sep-2025 18:45:59 CEST pre-events
+Opened a file at URL root://cmsstor904.fnal.gov:16482//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root?org.dcache.uuid=0494004c-48b7-4bfe-9f70-7effc3f9dd6c&org.dcache.xrootd.client=giraldin.36711@farmui02.ts.infn.it&tried=+1213llrxrd-redir.in2p3.fr,+1213xrootd-redic.pi.infn.it,+1213xrootd-cms-redir-int.cr.cnaf.infn.it,cmsxrootd-site3.fnal.gov,se.cis.gov.pl&triedrc=resel&xrd.logintoken=org.dcache.door=2620:6a:0:8420:0:0:0:101:1095&xrdcl.requuid=4060cfbe-14a6-4900-9da9-6fbbbdb13a61
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:46:00 CEST Run: 1 Event: 40884
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 1011 0000 1010 0100 0011
+ rawId       : 0x62cb0a43 / 1657473603
+ bits[0:24]  : 00cb0a43
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 11
+ Crystal type: 2
+ Readout unit: 3
+ Readout unit by type: 1
+ Detector Module: 4
+ Sensor Module: 0
+ Module      : 2
+ Crystal     : 4
+ Crystal in DB: 12
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:46:00 CEST Run: 1 Event: 40894
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1001 1011 0110 0001 0100 0001
+ rawId       : 0x629b6141 / 1654350145
+ bits[0:24]  : 009b6141
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 27
+ Crystal type: 1
+ Readout unit: 1
+ Readout unit by type: 1
+ Detector Module: 11
+ Sensor Module: 1
+ Module      : 24
+ Crystal     : 2
+ Crystal in DB: 1
+
+%MSG
+Begin processing the 1001st record. Run 1, Event 41201, LumiSection 413 on stream 2 at 26-Sep-2025 18:46:00.319 CEST
+[2025-09-26 18:46:01.207559 +0200][Error  ][AsyncSock         ] [cmsxrootd-site1.fnal.gov:1094.0] Socket error encountered: [ERROR] Socket error
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:46:21 CEST Run: 1 Event: 41250
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 0001 0011 1110 1000 1100
+ rawId       : 0x62c13e8c / 1656831628
+ bits[0:24]  : 00c13e8c
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 1
+ Crystal type: 2
+ Readout unit: 4
+ Readout unit by type: 2
+ Detector Module: 10
+ Sensor Module: 0
+ Module      : 15
+ Crystal     : 13
+ Crystal in DB: 3
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:46:21 CEST Run: 1 Event: 41269
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1101 0000 0000 1110 0100 0110
+ rawId       : 0x62d00e46 / 1657802310
+ bits[0:24]  : 00d00e46
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 16
+ Crystal type: 2
+ Readout unit: 3
+ Readout unit by type: 1
+ Detector Module: 8
+ Sensor Module: 0
+ Module      : 3
+ Crystal     : 7
+ Crystal in DB: 9
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:46:21 CEST Run: 1 Event: 41269
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1101 1001 0101 0011 1000 1100
+ rawId       : 0x62d9538c / 1658409868
+ bits[0:24]  : 00d9538c
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 25
+ Crystal type: 3
+ Readout unit: 6
+ Readout unit by type: 2
+ Detector Module: 7
+ Sensor Module: 0
+ Module      : 20
+ Crystal     : 13
+ Crystal in DB: 3
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:46:37 CEST Run: 1 Event: 41402
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 1001 0100 1111 1000 1110
+ rawId       : 0x62c94f8e / 1657360270
+ bits[0:24]  : 00c94f8e
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 9
+ Crystal type: 3
+ Readout unit: 6
+ Readout unit by type: 2
+ Detector Module: 3
+ Sensor Module: 0
+ Module      : 19
+ Crystal     : 15
+ Crystal in DB: 1
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:46:49 CEST Run: 1 Event: 41422
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1001 1010 0011 1111 0100 0111
+ rawId       : 0x629a3f47 / 1654275911
+ bits[0:24]  : 009a3f47
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 26
+ Crystal type: 3
+ Readout unit: 5
+ Readout unit by type: 1
+ Detector Module: 10
+ Sensor Module: 0
+ Module      : 15
+ Crystal     : 8
+ Crystal in DB: 8
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:46:49 CEST Run: 1 Event: 41451
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 1101 0101 1011 0100 0000
+ rawId       : 0x62cd5b40 / 1657625408
+ bits[0:24]  : 00cd5b40
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 13
+ Crystal type: 3
+ Readout unit: 5
+ Readout unit by type: 1
+ Detector Module: 3
+ Sensor Module: 1
+ Module      : 22
+ Crystal     : 1
+ Crystal in DB: 0
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:47:00 CEST Run: 1 Event: 41487
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 0011 0001 0011 1000 1100
+ rawId       : 0x6283138c / 1652757388
+ bits[0:24]  : 0083138c
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 3
+ Crystal type: 3
+ Readout unit: 6
+ Readout unit by type: 2
+ Detector Module: 0
+ Sensor Module: 1
+ Module      : 4
+ Crystal     : 13
+ Crystal in DB: 12
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:47:16 CEST Run: 1 Event: 41749
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 1100 0101 1110 0100 0011
+ rawId       : 0x62cc5e43 / 1657560643
+ bits[0:24]  : 00cc5e43
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 12
+ Crystal type: 2
+ Readout unit: 3
+ Readout unit by type: 1
+ Detector Module: 7
+ Sensor Module: 1
+ Module      : 23
+ Crystal     : 4
+ Crystal in DB: 3
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:47:23 CEST Run: 1 Event: 41753
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1000 1001 0100 1001 0100 1111
+ rawId       : 0x6289494f / 1653164367
+ bits[0:24]  : 0089494f
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 9
+ Crystal type: 1
+ Readout unit: 1
+ Readout unit by type: 1
+ Detector Module: 10
+ Sensor Module: 1
+ Module      : 18
+ Crystal     : 16
+ Crystal in DB: 15
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:47:23 CEST Run: 1 Event: 41754
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1001 1101 0010 0011 0100 1100
+ rawId       : 0x629d234c / 1654465356
+ bits[0:24]  : 009d234c
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 0
+ Rod         : 29
+ Crystal type: 3
+ Readout unit: 5
+ Readout unit by type: 1
+ Detector Module: 5
+ Sensor Module: 0
+ Module      : 8
+ Crystal     : 13
+ Crystal in DB: 3
+
+%MSG
+%MSG-w BtlTimeMonitoring:  BtlTimeMonitoring:btlTimeMonitoring  26-Sep-2025 18:47:24 CEST Run: 1 Event: 41786
+Empty uncalibrated hit in DetId [MTDDetId::print]  0110 0010 1100 0111 0001 1111 0100 1101
+ rawId       : 0x62c71f4d / 1657216845
+ bits[0:24]  : 00c71f4d
+ Detector        : 6
+ SubDetector     : 1
+ MTD subdetector : 1
+ BTL 
+ Side        : 1
+ Rod         : 7
+ Crystal type: 3
+ Readout unit: 5
+ Readout unit by type: 1
+ Detector Module: 1
+ Sensor Module: 0
+ Module      : 7
+ Crystal     : 14
+ Crystal in DB: 2
+
+%MSG
+26-Sep-2025 18:47:24 CEST  Closed file root://xrootd-cms.infn.it//store/relval/CMSSW_15_1_0_pre4/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/83b28127-1656-458c-bbd2-b26422f5153e.root
+MessageLogger: dropped waiting message count 66
+133.79user 16.93system 8:19.51elapsed 30%CPU (0avgtext+0avgdata 2059488maxresident)k
+836696inputs+0outputs (2120major+1635513minor)pagefaults 0swaps
+
+cmsExec: cmsRun exit status  0
+
+cmsExec: Ending job on  Fri Sep 26 18:47:25 CEST 2025

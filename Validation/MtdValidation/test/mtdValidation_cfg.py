@@ -1,33 +1,25 @@
 import FWCore.ParameterSet.Config as cms
-
+import sys
 
 from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
 process = cms.Process('mtdValidation',Phase2C17I13M9)
+
+#process.Tracer = cms.Service('Tracer')
 
 process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load('Configuration.EventContent.EventContent_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
-process.load('SimGeneral.MixingModule.mixNoPU_cfi') # No pileup
+process.load('SimGeneral.MixingModule.mixNoPU_cfi')
 
 process.load("Configuration.Geometry.GeometryExtendedRun4D110Reco_cff")
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
-
-# For playback pileup mode
-# process.load('SimGeneral.MixingModule.mix_POISSON_average_cfi')
-# process.load('Configuration.StandardSequences.Services_cff')
-# Other statements
-# process.mix.input.nbPileupEvents.averageNumber = cms.double(200.000000)
-# process.mix.bunchspace = cms.int32(25)
-# process.mix.minBunch = cms.int32(-3)
-# process.mix.maxBunch = cms.int32(3)
-# process.mix.input.fileNames = cms.untracked.vstring([]) # MinBias, from step3 confif file
-
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T33', '')
 process.load('RecoLocalFastTime.FTLClusterizer.MTDCPEESProducer_cfi')
 process.load("Configuration.StandardSequences.Reconstruction_cff")
+process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
@@ -38,18 +30,46 @@ process.options.numberOfConcurrentLuminosityBlocks = 0
 process.options.eventSetup.numberOfConcurrentIOVs = 1
 
 process.MessageLogger.cerr.FwkReport  = cms.untracked.PSet(
-    reportEvery = cms.untracked.int32(10),
+    reportEvery = cms.untracked.int32(500),
 )
 
+
+#Per file da EOS (ParticleGun):
+#file_list = [
+#        f'file:/eos/infnts/cms/store/user/cgiraldi/TEST_BackScattering_Metodo1/PiGun/step3_{i}.root'
+#        for i in range (1, 1)
+#]
+
+
+#Con RelVal dal DAS:
+# --- leggo la lista dei file dal file "lista"
+with open("listaMinBias30") as f:
+    all_files = [line.strip() for line in f if line.strip()]
+
+# --- quanti files vuoi usare (es: 5)
+n_files_to_use = 2  
+
+# --- prendo solo i primi n_files_to_use files
+input_files = all_files[:n_files_to_use]
+
+
+
+# --- in case of condor: sys.argv[1]
 process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring(
-        'file:step3.root'
-    )
-)
+        #Con condor:
+        #fileNames = cms.untracked.vstring(sys.argv[1])
+    
+        #Locale con file Singoli: 
+        #fileNames = cms.untracked.vstring(
+        #'/store/relval/CMSSW_15_1_0_pre2/RelValMinBias_14TeV/GEN-SIM-RECO/150X_mcRun4_realistic_v1_STD_RegeneratedGS_Run4D110_noPU-v1/2580000/4f268cb8-1f1d-48ce-b18c-82b05bf9bf33.root'
+        #)
 
-# For playback pileup mode
-# process.RandomNumberGeneratorService.restoreStateLabel=cms.untracked.string("randomEngineStateProducer")
-# process.mix.playback = True
+        #Con loop file EOS
+        #fileNames = cms.untracked.vstring (*file_list)
+
+        #Con file lista DAS relval:
+        fileNames=cms.untracked.vstring(*input_files)
+)
 
 process.mix.digitizers = cms.PSet()
 for a in process.aliases: delattr(process, a)
@@ -58,7 +78,9 @@ for a in process.aliases: delattr(process, a)
 process.load("Validation.MtdValidation.btlSimHitsValid_cfi")
 process.load("Validation.MtdValidation.btlDigiHitsValid_cfi")
 process.load("Validation.MtdValidation.btlLocalRecoValid_cfi")
-btlValidation = cms.Sequence(process.btlSimHitsValid + process.btlDigiHitsValid + process.btlLocalRecoValid)
+process.load("Validation.MtdValidation.btlTimeMonitoring_cfi")
+process.load("Validation.MtdValidation.btlTimeMonitoringWTracks_cfi")
+btlValidation = cms.Sequence(process.btlSimHitsValid + process.btlDigiHitsValid + process.btlLocalRecoValid + process.btlTimeMonitoring + process.btlTimeMonitoringWTracks)
 
 # --- ETL Validation
 process.load("Validation.MtdValidation.etlSimHitsValid_cfi")
@@ -69,18 +91,23 @@ etlValidation = cms.Sequence(process.etlSimHitsValid + process.etlDigiHitsValid 
 # --- Global Validation
 process.load("Validation.MtdValidation.mtdTracksValid_cfi")
 process.load("Validation.MtdValidation.mtdEleIsoValid_cfi")
-process.load("Validation.MtdValidation.vertices4DValid_cff")
+process.load("Validation.MtdValidation.vertices4DValid_cfi")
 
-# process.btlSimHitsValid.optionalPlots = True
+# --- BTL Time Monitoring
+#process.load("Validation.MtdValidation.btlTimeMonitoring_cfi")
+
+
 # process.btlDigiHitsValid.optionalPlots = True
 # process.etlDigiHitsValid.optionalPlots = True
-# process.btlLocalRecoValid.optionalPlots = True
+#process.btlLocalRecoValid.optionalPlots = True
 # process.etlLocalRecoValid.optionalPlots = True
 # process.mtdTracksValid.optionalPlots = True
 # process.vertices4DValid.optionalPlots = True
+process.btlTimeMonitoring.optionalPlots = True
+process.btlTimeMonitoringWTracks.optionalPlots = True
 
-process.validation = cms.Sequence(btlValidation + etlValidation + process.mtdTracksValid + process.mtdEleIsoValid + process.vertices4DValid)
-
+#process.validation = cms.Sequence(btlValidation + etlValidation + process.mtdTracksValid + process.mtdEleIsoValid + process.vertices4DValid)
+process.validation = cms.Sequence(btlValidation + process.mtdTracksValid)
 process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
     dataset = cms.untracked.PSet(
         dataTier = cms.untracked.string('DQMIO'),
@@ -94,5 +121,8 @@ process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
 process.p = cms.Path( process.mix + process.mtdTrackingRecHits + process.validation )
 process.endjob_step = cms.EndPath(process.endOfProcess)
 process.DQMoutput_step = cms.EndPath( process.DQMoutput )
+
+
+#from Validation.Performace.python.TimeMemorySummary
 
 process.schedule = cms.Schedule( process.p , process.endjob_step , process.DQMoutput_step )
